@@ -1,0 +1,202 @@
+import React, { useState } from 'react';
+import { useApp } from '../context/AppContext';
+import { EarlyChildhoodAgeGroup } from '../types';
+import { X, UserPlus, GraduationCap, Check } from 'lucide-react';
+
+interface NewTeacherModalProps {
+  onClose: () => void;
+}
+
+export const NewTeacherModal: React.FC<NewTeacherModalProps> = ({ onClose }) => {
+  const { registerTeacher, classrooms, showToast } = useApp();
+
+  const [name, setName] = useState('');
+  const [khmerName, setKhmerName] = useState('');
+  const [email, setEmail] = useState('');
+  const [title, setTitle] = useState('Early Childhood Lead Educator');
+  const [classId, setClassId] = useState(classrooms[0]?.id || '');
+  const [phone, setPhone] = useState('+855 (0) 12 ');
+  const [roomNumber, setRoomNumber] = useState('Room 201');
+  const [bio, setBio] = useState('Passionate about early childhood sensory development, inquiry-based play, and trilingual literacy.');
+
+  const AVATARS = [
+    'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1580894732488-b22306f6e5ae?w=150&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=150&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+  ];
+
+  const [selectedAvatar, setSelectedAvatar] = useState(AVATARS[0]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      showToast('Please enter the educator full name', 'warning');
+      return;
+    }
+
+    const selectedClass = classrooms.find(c => c.id === classId) || classrooms[0];
+
+    registerTeacher({
+      name: name.trim(),
+      khmerName: khmerName.trim(),
+      email: email.trim() || `${name.toLowerCase().replace(/\s+/g, '.')}@deweychildcare.edu.kh`,
+      avatar: selectedAvatar,
+      title: title.trim(),
+      assignedClassId: selectedClass.id,
+      assignedClassName: selectedClass.name,
+      ageGroup: selectedClass.ageGroup,
+      phone: phone.trim(),
+      roomNumber: roomNumber.trim(),
+      bio: bio.trim(),
+    });
+
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+      <div className="bg-white rounded-3xl shadow-2xl border border-emerald-100 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        
+        {/* Modal Header */}
+        <div className="px-6 py-4 bg-gradient-to-r from-[#006338] to-[#007A43] text-white flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-white/15 rounded-xl">
+              <UserPlus className="w-5 h-5 text-amber-300" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold">Register Educator Account</h2>
+              <p className="text-xs text-emerald-100 font-medium">
+                Dewey Childcare House Faculty Provisioning
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-emerald-200 hover:text-white rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Avatar selector */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-2">
+              Select Profile Photo:
+            </label>
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              {AVATARS.map((av, idx) => (
+                <img
+                  key={idx}
+                  src={av}
+                  alt={`Avatar option ${idx}`}
+                  onClick={() => setSelectedAvatar(av)}
+                  className={`w-11 h-11 rounded-xl object-cover cursor-pointer ring-2 transition-all shrink-0 ${
+                    selectedAvatar === av
+                      ? 'ring-[#007A43] scale-105 shadow-xs'
+                      : 'ring-slate-200 hover:ring-emerald-300 opacity-70 hover:opacity-100'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Full Name (English) *
+              </label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Teacher Sarah Chen"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-emerald-600"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1 font-['Battambang']">
+                Khmer Name (ឈ្មោះជាភាសាខ្មែរ)
+              </label>
+              <input
+                type="text"
+                value={khmerName}
+                onChange={(e) => setKhmerName(e.target.value)}
+                placeholder="ឧ. អ្នកគ្រូ សារ៉ា"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-emerald-600 font-['Battambang']"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Institutional Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="teacher.name@deweychildcare.edu.kh"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-emerald-600"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Assigned Classroom
+              </label>
+              <select
+                value={classId}
+                onChange={(e) => setClassId(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-emerald-600"
+              >
+                {classrooms.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.ageGroup})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">
+              Faculty Title / Specialization
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Lead Teacher - Pre-K Trilingual Immersion"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-emerald-600"
+            />
+          </div>
+
+          <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex items-center gap-1.5 px-5 py-2 bg-[#007A43] hover:bg-[#006338] text-white text-xs font-bold rounded-xl shadow-xs transition-all active:scale-95"
+            >
+              <Check className="w-4 h-4 text-amber-300" />
+              <span>Create Faculty Profile</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
