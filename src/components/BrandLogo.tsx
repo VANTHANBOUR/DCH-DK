@@ -26,89 +26,107 @@ const useAppSafe = () => {
   }
 };
 
-export const DIShield: React.FC<{ size?: number; className?: string }> = ({ size = 48, className = '' }) => {
+export const DIOvalLogo: React.FC<{ size?: number; className?: string }> = ({ size = 48, className = '' }) => {
   return (
     <svg
       width={size}
-      height={Math.round(size * 1.14)}
-      viewBox="0 0 1000 1140"
+      height={size}
+      viewBox="0 0 500 500"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={`shrink-0 drop-shadow-sm select-none ${className}`}
-      aria-label="Dewey International (DI) Official Logo"
+      aria-label="Dewey International (DI) Official Central Logo"
     >
       <defs>
-        {/* Inner Shield Clip Path */}
-        <clipPath id="diShieldInnerClip">
-          <path d="M 500,86 C 685,86 896,132 896,132 C 896,445 870,720 500,1050 C 130,720 104,445 104,132 C 104,132 315,86 500,86 Z" />
-        </clipPath>
-        {/* Right Half Clip */}
-        <clipPath id="diRightClip">
-          <rect x="500" y="0" width="500" height="1140" />
+        {/* Curve Path for "SERVING FOR LIFE" bottom white text */}
+        <path
+          id="diServingTextArc"
+          d="M 90 355 C 150 480, 330 480, 410 355"
+          fill="none"
+        />
+        {/* Outer Orange Dual Gradient */}
+        <linearGradient id="diOrangeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FF7000" />
+          <stop offset="45%" stopColor="#FF4100" />
+          <stop offset="100%" stopColor="#E12500" />
+        </linearGradient>
+        {/* Inner Yellow Gradient */}
+        <linearGradient id="diYellowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FFE000" />
+          <stop offset="100%" stopColor="#FF9E00" />
+        </linearGradient>
+        {/* Oval Clip Path */}
+        <clipPath id="diInnerWhiteOvalClip">
+          <ellipse cx="250" cy="235" rx="180" ry="168" transform="rotate(-18 250 235)" />
         </clipPath>
       </defs>
 
-      {/* 1. Outer Shield (Emerald Green Base) */}
+      {/* 1. OUTER SWOOSH RING (Orange & Yellow Orbital Swoosh) */}
+      {/* Red/Orange Outer Swoosh */}
       <path
-        d="M 500,60 C 705,60 940,110 940,110 C 940,460 912,750 500,1080 C 88,750 60,460 60,110 C 60,110 295,60 500,60 Z"
-        fill="#008242"
+        d="M 235 10 C 380 10 495 100 488,252 C 480,395 345,495 190,488 C 85,482 10,390 18,248 C 25,105 115,18 235,10 Z"
+        fill="url(#diOrangeGradient)"
       />
 
-      {/* 2. Gold Accent Border Line */}
+      {/* Inner Golden Yellow Accent Swoosh */}
       <path
-        d="M 500,86 C 685,86 896,132 896,132 C 896,445 870,720 500,1050 C 130,720 104,445 104,132 C 104,132 315,86 500,86 Z"
-        fill="none"
-        stroke="#F58220"
-        strokeWidth="18"
-        strokeLinejoin="round"
-        strokeLinecap="round"
+        d="M 230 32 C 352 32 452 110 446,242 C 440,362 325,452 182,446 C 88,440 32,358 38,242 C 44,122 125,38 230,32 Z"
+        fill="url(#diYellowGradient)"
       />
 
-      {/* 3. Inner Shield Content Area */}
-      <g clipPath="url(#diShieldInnerClip)">
-        {/* Left Side: Solid Emerald Green */}
-        <rect x="0" y="0" width="500" height="1140" fill="#008242" />
+      {/* 2. WHITE OVAL CANVAS CORE */}
+      <ellipse
+        cx="250"
+        cy="235"
+        rx="180"
+        ry="168"
+        transform="rotate(-18 250 235)"
+        fill="#FFFFFF"
+      />
 
-        {/* Right Side: Clean White Canvas */}
-        <rect x="500" y="0" width="500" height="1140" fill="#FFFFFF" />
+      {/* 3. CENTER "DI" GREEN MONOGRAM */}
+      <g transform="translate(0, -5)">
+        <text
+          x="238"
+          y="262"
+          fill="#00823B"
+          fontFamily="'Times New Roman', 'Baskerville', 'Georgia', serif"
+          fontSize="205"
+          fontWeight="bold"
+          fontStyle="italic"
+          textAnchor="middle"
+          letterSpacing="-3"
+        >
+          DI
+        </text>
 
-        {/* Vertical Split Line */}
-        <line x1="500" y1="86" x2="500" y2="1050" stroke="#008242" strokeWidth="2" />
-
-        {/* LEFT HALF: D I Monogram */}
-        <g fill="#FFFFFF" fontFamily="'Times New Roman', 'Baskerville', 'Georgia', serif" fontWeight="bold" textAnchor="middle">
-          <text x="290" y="440" fontSize="280" letterSpacing="4">D</text>
-          <text x="290" y="740" fontSize="280" letterSpacing="4">I</text>
-        </g>
-
-        {/* RIGHT HALF: Academic Cap & Open Book */}
-        <g clipPath="url(#diRightClip)">
-          {/* Graduation Cap */}
-          <polygon points="700,268 852,308 700,348 548,308" fill="#008242" />
-          <path d="M 588,335 C 588,335 588,390 700,412 C 812,390 812,335 812,335 C 812,335 776,374 700,374 C 624,374 588,335 588,335 Z" fill="#008242" />
-          <path d="M 558,308 L 558,405" stroke="#008242" strokeWidth="6" strokeLinecap="round" />
-          <circle cx="558" cy="412" r="7.5" fill="#008242" />
-          <ellipse cx="700" cy="308" rx="7" ry="5" fill="#FFFFFF" />
-          <ellipse cx="700" cy="308" rx="4" ry="3" fill="#008242" />
-
-          {/* Open Book Wings */}
-          <path d="M 698,532 C 672,475 588,446 515,482 C 555,496 630,504 682,530 Z" fill="#F58220" />
-          <path d="M 554,435 C 598,435 660,462 696,520 C 660,488 596,468 540,460 Z" fill="#F58220" />
-          <path d="M 702,532 C 728,475 812,446 885,482 C 845,496 770,504 718,530 Z" fill="#F58220" />
-          <path d="M 846,435 C 802,435 740,462 704,520 C 740,488 804,468 860,460 Z" fill="#F58220" />
-
-          {/* Open Book Curved Pages */}
-          <path d="M 500,580 C 650,555 810,578 905,618 L 905,638 C 810,598 650,575 500,600 Z" fill="#008242" />
-          <path d="M 500,685 C 620,630 755,640 885,700 C 850,718 730,662 500,715 Z" fill="#008242" />
-          <path d="M 500,740 C 610,695 725,705 845,775 C 805,792 700,730 500,772 Z" fill="#008242" />
-          <path d="M 500,798 C 590,758 680,770 785,848 C 730,868 645,808 500,832 Z" fill="#008242" />
-        </g>
+        {/* 4. RED KHMER MOTTO BELOW "DI" */}
+        <text
+          x="248"
+          y="310"
+          fill="#DC2626"
+          fontFamily="'Battambang', 'Kantumruy Pro', 'Khmer OS', sans-serif"
+          fontSize="28"
+          fontWeight="bold"
+          fontStyle="italic"
+          textAnchor="middle"
+        >
+          ធ្វើអោយជីវិតកាន់តែប្រសើរ
+        </text>
       </g>
+
+      {/* 5. WHITE "SERVING FOR LIFE" CURVED ALONG BOTTOM SWOOSH */}
+      <text fill="#FFFFFF" fontSize="24" fontWeight="900" fontFamily="'Outfit', 'Plus Jakarta Sans', sans-serif" letterSpacing="2.5">
+        <textPath href="#diServingTextArc" startOffset="50%" textAnchor="middle">
+          SERVING FOR LIFE
+        </textPath>
+      </text>
     </svg>
   );
 };
 
-export const DCHShield = DIShield;
+export const DIShield = DIOvalLogo;
+export const DCHShield = DIOvalLogo;
 
 export const SchoolLogoIcon: React.FC<{
   size?: number;
@@ -130,7 +148,7 @@ export const SchoolLogoIcon: React.FC<{
   if (effectiveLogoUrl && !hasError) {
     return (
       <div 
-        style={{ width: size, height: Math.round(size * 1.14) }} 
+        style={{ width: size, height: size }} 
         className={`shrink-0 flex items-center justify-center relative overflow-hidden rounded-xl bg-white shadow-xs border border-emerald-100 p-1 ${className}`}
       >
         <img
