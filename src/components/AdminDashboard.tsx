@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { LessonPlan, UserAccount, UserRole } from '../types';
 import { StaffManagementModal } from './StaffManagementModal';
 import { ClassroomModal } from './ClassroomModal';
+import { LessonPlanTemplateModal } from './LessonPlanTemplateModal';
 import { 
   ShieldCheck, 
   BookOpen, 
@@ -27,7 +28,9 @@ import {
   Briefcase,
   UserPlus,
   School,
-  Plus
+  Plus,
+  Building2,
+  Table
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -50,7 +53,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     showToast,
     updateAccount,
     deleteAccount,
-    openSignUpModal
+    openSignUpModal,
+    openProfileModal
   } = useApp();
 
   // Filters
@@ -68,6 +72,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [staffRoleFilter, setStaffRoleFilter] = useState<string>('all');
   const [staffSearchQuery, setStaffSearchQuery] = useState<string>('');
   const [isClassroomModalOpen, setIsClassroomModalOpen] = useState(false);
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
   const teachers = allAccounts.filter(a => a.role === 'teacher');
   const weeklyCompliance = getWeeklyCompliance(selectedWeek);
@@ -195,6 +200,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {currentUser.role === 'admin' && (
+              <button
+                onClick={openProfileModal}
+                className="flex items-center gap-2 px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-amber-950 font-bold text-xs rounded-2xl shadow-sm transition-all active:scale-95"
+                title="Update School Profile, Contact Info, and Replace App Logo"
+              >
+                <Building2 className="w-4 h-4 text-amber-900" />
+                <span>Profile & Logo</span>
+              </button>
+            )}
             <button
               onClick={exportSummaryReport}
               className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-2xl backdrop-blur-xs border border-white/20 transition-colors shadow-2xs"

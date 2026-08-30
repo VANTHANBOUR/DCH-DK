@@ -316,6 +316,50 @@ export const INITIAL_LESSON_PLANS: LessonPlan[] = [
       'Felt board ocean backdrop',
       'Safety scissors and ribbons',
     ],
+    // Official Dewey Childcare House Format Template Fields
+    planDate: '2026-09-01',
+    timeStart: '08:30 AM',
+    timeEnd: '11:30 AM',
+    warmUpCircleTime: 'Welcome song in English, Khmer & Chinese; interactive greeting circle; daily weather & calendar chart check; ocean mystery sensory sound box with percussion shakers.',
+    firstSession: {
+      subject: 'Language & Trilingual Early Phonics',
+      activities: [
+        {
+          id: 's1_a1',
+          topicActivity: 'Marine Animals Vocabulary & Flashcards Matching (Fish, Whale, Crab, Turtle, Octopus)',
+          objectives: 'Identify, pronounce, and match 5 sea creatures in English, Khmer, and Mandarin.',
+          materialsSources: 'Trilingual flashcards, soft marine animal figurines, display board',
+          durationMins: 25,
+        },
+        {
+          id: 's1_a2',
+          topicActivity: 'Letter "O" for Octopus Sand-Tray Tracing & Storybook',
+          objectives: 'Practice fine-motor pincer grip and uppercase letter formation in sensory sand.',
+          materialsSources: 'Fine blue kinetic sand trays, wooden stylus sticks, "Rainbow Fish" book',
+          durationMins: 20,
+        },
+      ],
+    },
+    secondSession: {
+      subject: 'Sensory Discovery Science & Creative Arts',
+      activities: [
+        {
+          id: 's2_a1',
+          topicActivity: 'Ocean Density & Water Floating vs. Sinking Investigation',
+          objectives: 'Observe and predict object buoyancy in ocean salinity water bottles & water basins.',
+          materialsSources: 'Water table, seashells, corks, plastic coins, density observation tubes',
+          durationMins: 30,
+        },
+        {
+          id: 's2_a2',
+          topicActivity: 'Paper Plate Jellyfish Craft with Crepe Paper Tentacles',
+          objectives: 'Cut and glue sensory streamers; develop bilateral hand coordination.',
+          materialsSources: 'Paper plates, ribbon, safe washable glue, non-toxic paint, googly eyes',
+          durationMins: 25,
+        },
+      ],
+    },
+    closing: 'Review key vocabulary learned today; tidy up learning stations cooperatively; sing goodbye song "Down by the Bay" and prepare for home departure.',
     attachments: [
       {
         id: 'att_1',
@@ -416,6 +460,50 @@ export const INITIAL_LESSON_PLANS: LessonPlan[] = [
       'Pandan playdough ingredients',
       'Firefighter roleplay hats',
     ],
+    // Official Dewey Childcare House Format Template Fields
+    planDate: '2026-09-02',
+    timeStart: '08:30 AM',
+    timeEnd: '11:30 AM',
+    warmUpCircleTime: 'Khmer greeting and traditional blessing chant; role-play prop presentation with doctor stethoscope & firefighter helmet; daily calendar & weather in Khmer.',
+    firstSession: {
+      subject: 'Khmer Language & Cultural Literacy',
+      activities: [
+        {
+          id: 's1_sokha_1',
+          topicActivity: 'Consonants ក, ខ, គ paired with Community Helpers',
+          objectives: 'Recognize, trace, and articulate Khmer letters ក, ខ with helper occupations.',
+          materialsSources: 'Homemade Pandan dough, wooden letter stamps, tracing flashcards',
+          durationMins: 30,
+        },
+        {
+          id: 's1_sokha_2',
+          topicActivity: 'Interactive Story: "អ្នកជួយសហគមន៍យើង" (Our Community Helpers)',
+          objectives: 'Listen actively, ask questions, and identify neighborhood helpers.',
+          materialsSources: 'Sipar picture book, felt character puppets',
+          durationMins: 20,
+        },
+      ],
+    },
+    secondSession: {
+      subject: 'Social-Emotional Dramatic Play & Traditional Crafts',
+      activities: [
+        {
+          id: 's2_sokha_1',
+          topicActivity: 'Mini Clinic & Pharmacy Dramatic Role-Play',
+          objectives: 'Practice empathy, listening, and taking turns as doctors and patients.',
+          materialsSources: 'Doctor medical play kits, plush animal patients, pretend bandage wraps',
+          durationMins: 25,
+        },
+        {
+          id: 's2_sokha_2',
+          topicActivity: 'Traditional Khmer Paper Mat Weaving Patterns',
+          objectives: 'Weave alternating cardstock ribbons; build fine motor coordination.',
+          materialsSources: 'Pre-cut weaving templates, colored satin ribbons, child tweezers',
+          durationMins: 25,
+        },
+      ],
+    },
+    closing: 'Reflect on today\'s helper roles; sing "កូនៗស្រលាញ់អ្នកគ្រូ"; clean up weaving stations and pack bags for dismissal.',
     attachments: [
       {
         id: 'att_3',
@@ -503,6 +591,43 @@ export const INITIAL_LESSON_PLANS: LessonPlan[] = [
       'Bubble blowing machine and soap mixture',
       'Puppet BaoBao',
     ],
+    // Official Dewey Childcare House Format Template Fields
+    planDate: '2026-09-03',
+    timeStart: '08:45 AM',
+    timeEnd: '11:15 AM',
+    warmUpCircleTime: 'Morning puppet "Panda BaoBao" greeting; fruit nursery rhyme with shaker eggs; tactile warm/cool gel pack pass around.',
+    firstSession: {
+      subject: 'Mandarin Nursery Immersion & Taste Science',
+      activities: [
+        {
+          id: 's1_m1',
+          topicActivity: 'Sweet vs. Sour Fresh Fruit Tasting & Color Naming',
+          objectives: 'Explore taste textures (dragonfruit, banana, orange) and learn Mandarin fruit names.',
+          materialsSources: 'Child-safe sliced fruits, mini tasting plates, wet wipes',
+          durationMins: 25,
+        },
+        {
+          id: 's1_m2',
+          topicActivity: 'Rainbow Fruit Stamp Art on Banner Roll',
+          objectives: 'Grip cut fruit halves and press edible berry paint onto butcher paper.',
+          materialsSources: 'Apple and pepper slices, safe non-toxic berry paints, smocks',
+          durationMins: 20,
+        },
+      ],
+    },
+    secondSession: {
+      subject: 'Sensory Water Play & Music Movement',
+      activities: [
+        {
+          id: 's2_m1',
+          topicActivity: 'Fruit Wash & Sensory Bubble Water Basins',
+          objectives: 'Wash toy fruits with soft sponges; practice water pouring & hand sensory discovery.',
+          materialsSources: 'Warm water tubs, tear-free bubble solution, soft sponges, plastic fruits',
+          durationMins: 25,
+        },
+      ],
+    },
+    closing: 'Sing 《两只老虎》 (Two Tigers) farewell circle; calm body breathing; hand drying and shoe transition.',
     attachments: [
       {
         id: 'att_4',
@@ -574,6 +699,43 @@ export const INITIAL_LESSON_PLANS: LessonPlan[] = [
       'Plastic yellow safety helmets (24 pcs)',
       'Measuring tape ribbons',
     ],
+    // Official Dewey Childcare House Format Template Fields
+    planDate: '2026-09-04',
+    timeStart: '08:30 AM',
+    timeEnd: '11:30 AM',
+    warmUpCircleTime: 'Storytime "Iggy Peck, Architect"; STEM question of the day: "What makes a tall building strong?"; bridge load demonstration.',
+    firstSession: {
+      subject: 'STEM Architecture & Spatial Geometry',
+      activities: [
+        {
+          id: 's1_d1',
+          topicActivity: 'Cantilever Bridge Construction with Kapla Blocks',
+          objectives: 'Construct a freestanding bridge supporting 10 toy cars using unit wooden planks.',
+          materialsSources: '500 Kapla blocks, toy cars, spirit levels, blueprint prompt cards',
+          durationMins: 35,
+        },
+        {
+          id: 's1_d2',
+          topicActivity: 'Marshmallow & Toothpick 3D Shape Engineering',
+          objectives: 'Distinguish 2D polygons from 3D solids (pyramid, cube, prism); test structural rigidity.',
+          materialsSources: 'Mini vegan marshmallows, craft toothpicks, geometry prompt cards',
+          durationMins: 25,
+        },
+      ],
+    },
+    secondSession: {
+      subject: 'Physical Construction & Trilingual Vocabulary',
+      activities: [
+        {
+          id: 's2_d1',
+          topicActivity: 'Giant Cardboard Brick Construction Site with Safety Helmets',
+          objectives: 'Teamwork coordination, measuring bridge lengths, using safety vocabulary.',
+          materialsSources: 'Giant corrugated cardboard bricks, measuring tapes, child hard hats',
+          durationMins: 30,
+        },
+      ],
+    },
+    closing: 'Bridge load-testing exhibition; tally successful designs; sing "London Bridge" & "យើងជាវិស្វករតូច"; pack blocks safely.',
     attachments: [
       {
         id: 'att_5',
@@ -662,6 +824,43 @@ export const INITIAL_LESSON_PLANS: LessonPlan[] = [
       'Plush barn animals',
       'Textured discovery boards',
     ],
+    // Official Dewey Childcare House Format Template Fields
+    planDate: '2026-09-05',
+    timeStart: '08:30 AM',
+    timeEnd: '11:00 AM',
+    warmUpCircleTime: 'Tickle feather sensory greeting game; soft animal puppet hello; farm animal song with finger puppets & animal sounds imitation ("Moo", "Quack", "Baa").',
+    firstSession: {
+      subject: 'Sensory Texture & Tactile Discovery',
+      activities: [
+        {
+          id: 's1_c1',
+          topicActivity: 'Soft Sheep Wool vs. Hard Wooden Blocks Touch Test',
+          objectives: 'Differentiate soft wool textures from solid wood; develop tactile sensory perception.',
+          materialsSources: 'Organic wool batting, polished wooden cubes, wire whisk cages',
+          durationMins: 20,
+        },
+        {
+          id: 's1_c2',
+          topicActivity: 'Pulling Cotton Clouds & Sticky Sheep Collage',
+          objectives: 'Pincer grasp cotton pulling and sticking onto self-adhesive sheep silhouettes.',
+          materialsSources: 'Cotton balls, pre-cut sticky contact paper sheep templates',
+          durationMins: 20,
+        },
+      ],
+    },
+    secondSession: {
+      subject: 'Toddler Motor Exploration & Trilingual Rhymes',
+      activities: [
+        {
+          id: 's2_c1',
+          topicActivity: 'Rolling Textured Balls & Foam Grass Crawl Ramps',
+          objectives: 'Gross motor coordination, balance crawling over soft inclined mats.',
+          materialsSources: 'Sensory knobby balls, soft foam wedges, artificial turf pads',
+          durationMins: 25,
+        },
+      ],
+    },
+    closing: 'Sing "Old MacDonald Had a Farm"; warm wet cloth hand wiping; calm music lullaby transition.',
     attachments: [
       {
         id: 'att_7',
@@ -677,3 +876,22 @@ export const INITIAL_LESSON_PLANS: LessonPlan[] = [
     feedbackHistory: [],
   },
 ];
+
+export const INITIAL_SCHOOL_PROFILE = {
+  schoolNameKhmer: 'ឌូវី ឆាល់ឃែរ៍ ហោស៍',
+  schoolNameEnglish: 'Dewey Childcare House',
+  schoolAbbreviation: 'DCH',
+  taglineKhmer: 'មត្តេយ្យសិក្សាអន្តរជាតិ ៣ ភាសា ( អង់គ្លេស-ខ្មែរ-ចិន )',
+  taglineEnglish: 'International Trilingual Kindergarten (English · Khmer · Chinese)',
+  portalBadgeText: 'DCH Portal',
+  customLogoUrl: null as string | null,
+  campus: 'Main Campus · Sen Sok, Phnom Penh',
+  contactEmail: 'info@deweychildcare.edu.kh',
+  contactPhone: '+855 (0) 23 888 777',
+  address: 'No. 128, St. 2004, Sen Sok, Phnom Penh, Kingdom of Cambodia',
+  academicYear: '2025 - 2026',
+  currentTerm: 'Term 1 (Aug - Nov 2026)',
+  websiteUrl: 'https://deweychildcare.edu.kh',
+  updatedAt: new Date().toISOString(),
+  updatedBy: 'Madam Sopheak Rath (Principal)',
+};

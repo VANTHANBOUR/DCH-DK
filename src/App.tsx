@@ -12,6 +12,8 @@ import { BrandGuidelinesModal } from './components/BrandGuidelinesModal';
 import { NewTeacherModal } from './components/NewTeacherModal';
 import { AuthModal } from './components/AuthModal';
 import { AuthGate } from './components/AuthGate';
+import { SchoolProfileModal } from './components/SchoolProfileModal';
+import { LessonPlanTemplateModal } from './components/LessonPlanTemplateModal';
 import { LessonPlan } from './types';
 import { 
   LayoutDashboard, 
@@ -46,6 +48,7 @@ const MainContent: React.FC = () => {
   const [viewingPlan, setViewingPlan] = useState<LessonPlan | null>(null);
   const [isBrandGuideOpen, setIsBrandGuideOpen] = useState(false);
   const [isNewTeacherOpen, setIsNewTeacherOpen] = useState(false);
+  const [isFormatTemplateOpen, setIsFormatTemplateOpen] = useState(false);
 
   // Toast Component Helper
   const renderToast = () => {
@@ -111,6 +114,7 @@ const MainContent: React.FC = () => {
         onOpenNewPlan={handleOpenNewPlan}
         onOpenBrandGuide={() => setIsBrandGuideOpen(true)}
         onOpenNewTeacher={() => setIsNewTeacherOpen(true)}
+        onOpenFormatTemplate={() => setIsFormatTemplateOpen(true)}
       />
 
       {/* Role Notice & Sub-Navigation Bar */}
@@ -330,6 +334,18 @@ const MainContent: React.FC = () => {
       {isNewTeacherOpen && (
         <NewTeacherModal onClose={() => setIsNewTeacherOpen(false)} />
       )}
+
+      {isFormatTemplateOpen && (
+        <LessonPlanTemplateModal
+          onClose={() => setIsFormatTemplateOpen(false)}
+          onUseTemplate={() => {
+            setIsFormatTemplateOpen(false);
+            handleOpenNewPlan();
+          }}
+        />
+      )}
+
+      <SchoolProfileModal />
 
       <AuthModal />
     </div>

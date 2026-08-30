@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Classroom, LessonPlan, PlanAttachment, SystemAuditLog, UserAccount, UserRole, WeeklyComplianceRecord } from '../types';
-import { INITIAL_ACCOUNTS, INITIAL_AUDIT_LOGS, INITIAL_CLASSROOMS, INITIAL_LESSON_PLANS } from '../data/mockData';
+import { Classroom, LessonPlan, PlanAttachment, SchoolProfile, SystemAuditLog, UserAccount, UserRole, WeeklyComplianceRecord } from '../types';
+import { INITIAL_ACCOUNTS, INITIAL_AUDIT_LOGS, INITIAL_CLASSROOMS, INITIAL_LESSON_PLANS, INITIAL_SCHOOL_PROFILE } from '../data/mockData';
 import { 
   auth, 
   db, 
@@ -8,7 +8,8 @@ import {
   handleFirestoreError, 
   OperationType, 
   testFirestoreConnection,
-  firebaseConfig
+  firebaseConfig,
+  sanitizeForFirestore
 } from '../lib/firebase';
 import { 
   signInWithEmailAndPassword, 
@@ -27,7 +28,8 @@ import {
   collection, 
   deleteDoc, 
   updateDoc,
-  serverTimestamp 
+  serverTimestamp,
+  onSnapshot 
 } from 'firebase/firestore';
 
 export type NavigationTab = 
@@ -53,10 +55,14 @@ interface AppContextType {
   deleteAccount: (userId: string) => void;
   registerTeacher: (teacherData: Partial<UserAccount>) => Promise<UserAccount | null>;
   
-  // Firebase State
+  // Firebase State & Live Cloud Push
   isFirebaseConnected: boolean;
   firebaseAuthUser: FirebaseUser | null;
   firebaseConfigInfo: typeof firebaseConfig;
+  isSyncingLive: boolean;
+  lastSyncedAt: string | null;
+  pushLiveUpdate: (customMessage?: string) => Promise<void>;
+  forceCloudSync: () => Promise<void>;
   
   // Auth Modal Controls
   isAuthModalOpen: boolean;
@@ -107,17 +113,105 @@ interface AppContextType {
   // Active View / Navigation Tab
   activeTab: NavigationTab;
   setActiveTab: (tab: NavigationTab) => void;
+
+  // School Profile & Branding
+  schoolProfile: SchoolProfile;
+  updateSchoolProfile: (updates: Partial<SchoolProfile>) => Promise<void>;
+  uploadCustomLogo: (fileOrDataUrl: File | string) => Promise<string>;
+  resetLogoToDefault: () => Promise<void>;
+  isProfileModalOpen: boolean;
+  setIsProfileModalOpen: (open: boolean) => void;
+  openProfileModal: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  IS_LOGGED_IN: 'dch_is_logged_in_v4',
-  CURRENT_USER_ID: 'dch_current_user_id_v4',
-  ACCOUNTS: 'dch_accounts_v4',
-  LESSON_PLANS: 'dch_lesson_plans_v4',
-  CLASSROOMS: 'dch_classrooms_v4',
-  AUDIT_LOGS: 'dch_audit_logs_v4',
+  IS_LOGGED_IN: 'dch_is_logged_in_v5',
+  SESSION_ACTIVE: 'dch_session_active_v5',
+  CURRENT_USER_ID: 'dch_current_user_id_v5',
+  ACCOUNTS: 'dch_accounts_v5',
+  LESSON_PLANS: 'dch_lesson_plans_v5',
+  CLASSROOMS: 'dch_classrooms_v5',
+  AUDIT_LOGS: 'dch_audit_logs_v5',
+  SCHOOL_PROFILE: 'dch_school_profile_v5',
+};
+
+// Cross-tab & multi-window instant live synchronization helper
+const broadcastLiveSync = (type: string, data: any) => {
+  try {
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      const bc = new BroadcastChannel('dch_live_sync_bus');
+      bc.postMessage({ type, data, timestamp: Date.now() });
+      setTimeout(() => bc.close(), 150);
+    }
+  } catch {}
+};
+
+// Helper to convert and optimize uploaded logo image file to Base64
+const processImageFileToDataUrl = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const isSvg = file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg');
+    if (isSvg) {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Failed to read SVG file'));
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const rawDataUrl = e.target?.result as string;
+      if (!rawDataUrl) {
+        reject(new Error('Empty file content'));
+        return;
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const MAX_DIM = 512;
+          let width = img.width || 256;
+          let height = img.height || 256;
+
+          if (width > height) {
+            if (width > MAX_DIM) {
+              height = Math.round((height * MAX_DIM) / width);
+              width = MAX_DIM;
+            }
+          } else {
+            if (height > MAX_DIM) {
+              width = Math.round((width * MAX_DIM) / height);
+              height = MAX_DIM;
+            }
+          }
+
+          canvas.width = Math.max(1, width);
+          canvas.height = Math.max(1, height);
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(rawDataUrl);
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const optimizedDataUrl = canvas.toDataURL('image/png', 0.92);
+          resolve(optimizedDataUrl);
+        } catch {
+          resolve(rawDataUrl);
+        }
+      };
+      img.onerror = () => {
+        // Direct dataURL fallback if image tag couldn't render (e.g. some webp/blobs)
+        resolve(rawDataUrl);
+      };
+      img.src = rawDataUrl;
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -131,10 +225,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
-  // Authentication State
+  // Authentication State - Enforce sign-in per session
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
-      return localStorage.getItem(STORAGE_KEYS.IS_LOGGED_IN) === 'true';
+      const sessionActive = sessionStorage.getItem(STORAGE_KEYS.SESSION_ACTIVE);
+      return sessionActive === 'true';
     } catch {
       return false;
     }
@@ -143,8 +238,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Current User
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
     try {
-      const isLoggedIn = localStorage.getItem(STORAGE_KEYS.IS_LOGGED_IN) === 'true';
-      if (!isLoggedIn) return null;
+      const sessionActive = sessionStorage.getItem(STORAGE_KEYS.SESSION_ACTIVE) === 'true';
+      if (!sessionActive) return null;
       const savedId = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
       const found = allAccounts.find(a => a.id === savedId);
       return found || allAccounts[0] || null;
@@ -187,13 +282,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
+  // School Profile & Branding
+  const [schoolProfile, setSchoolProfile] = useState<SchoolProfile>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.SCHOOL_PROFILE);
+      return saved ? { ...INITIAL_SCHOOL_PROFILE, ...JSON.parse(saved) } : INITIAL_SCHOOL_PROFILE;
+    } catch {
+      return INITIAL_SCHOOL_PROFILE;
+    }
+  });
+
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
   const [selectedPlan, setSelectedPlan] = useState<LessonPlan | null>(null);
   const [activeTab, setActiveTab] = useState<NavigationTab>('dashboard');
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'info' | 'warning' | 'error' } | null>(null);
   
+  // Real-time synchronization state
+  const [isSyncingLive, setIsSyncingLive] = useState<boolean>(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(() => new Date().toISOString());
+
   // Auth modal states
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
+
+  const showToast = (text: string, type: 'success' | 'info' | 'warning' | 'error' = 'success') => {
+    setToastMessage({ text, type });
+    setTimeout(() => {
+      setToastMessage((prev) => (prev?.text === text ? null : prev));
+    }, 4500);
+  };
 
   // Test Firebase Firestore Connection on Mount & listen to Auth
   useEffect(() => {
@@ -209,6 +326,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (existing) {
           setCurrentUser(existing);
           setIsAuthenticated(true);
+          sessionStorage.setItem(STORAGE_KEYS.SESSION_ACTIVE, 'true');
           localStorage.setItem(STORAGE_KEYS.IS_LOGGED_IN, 'true');
           localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, existing.id);
         } else {
@@ -239,6 +357,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setAllAccounts(prev => [...prev.filter(a => a.email.toLowerCase() !== email), newAccount]);
           setCurrentUser(newAccount);
           setIsAuthenticated(true);
+          sessionStorage.setItem(STORAGE_KEYS.SESSION_ACTIVE, 'true');
           localStorage.setItem(STORAGE_KEYS.IS_LOGGED_IN, 'true');
           localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, newAccount.id);
         }
@@ -247,6 +366,192 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     return () => unsubscribe();
   }, []);
+
+  // REAL-TIME FIRESTORE ON-SNAPSHOT LISTENERS & CROSS-TAB SYNC
+  useEffect(() => {
+    // 1. Listen for real-time Lesson Plan changes (Approvals, Revisions, Feedback, Status Updates)
+    const unsubPlans = onSnapshot(collection(db, 'lessonPlans'), (snapshot) => {
+      if (!snapshot.empty) {
+        const remotePlans: LessonPlan[] = [];
+        snapshot.forEach(docSnap => {
+          const planData = docSnap.data() as LessonPlan;
+          remotePlans.push({ ...planData, id: docSnap.id });
+        });
+
+        setLessonPlans(prev => {
+          // If teacher is logged in, detect if any of their plans was approved or revised live
+          if (currentUser && currentUser.role === 'teacher') {
+            remotePlans.forEach(newP => {
+              const oldP = prev.find(p => p.id === newP.id);
+              if (oldP && (oldP.teacherId === currentUser.id || newP.teacherId === currentUser.id)) {
+                if (oldP.status !== 'approved' && newP.status === 'approved') {
+                  const reviewerName = newP.feedbackHistory?.[0]?.reviewerName || 'Academic Officer & Admin';
+                  showToast(`🎉 LIVE UPDATE: Your Week ${newP.weekNumber} Lesson Plan ("${newP.themeTitle}") has been APPROVED by ${reviewerName}!`, 'success');
+                } else if (oldP.status !== 'revision_requested' && newP.status === 'revision_requested') {
+                  showToast(`⚠️ LIVE UPDATE: Revision requested on Week ${newP.weekNumber} Plan ("${newP.themeTitle}").`, 'warning');
+                }
+              }
+            });
+          }
+
+          // Merge Firestore docs into state
+          const planMap = new Map<string, LessonPlan>();
+          prev.forEach(p => planMap.set(p.id, p));
+          remotePlans.forEach(p => planMap.set(p.id, p));
+          const updatedPlans = Array.from(planMap.values());
+
+          // Also update selectedPlan if open
+          if (selectedPlan) {
+            const fresh = updatedPlans.find(p => p.id === selectedPlan.id);
+            if (fresh) setSelectedPlan(fresh);
+          }
+
+          return updatedPlans;
+        });
+      }
+    }, (err) => {
+      console.warn('Firestore lessonPlans live snapshot notice:', err);
+    });
+
+    // 2. Listen for real-time Classrooms updates
+    const unsubClassrooms = onSnapshot(collection(db, 'classrooms'), (snapshot) => {
+      if (!snapshot.empty) {
+        const remoteClassrooms: Classroom[] = [];
+        snapshot.forEach(docSnap => {
+          remoteClassrooms.push({ ...(docSnap.data() as Classroom), id: docSnap.id });
+        });
+        setClassrooms(prev => {
+          const map = new Map<string, Classroom>();
+          prev.forEach(c => map.set(c.id, c));
+          remoteClassrooms.forEach(c => map.set(c.id, c));
+          return Array.from(map.values());
+        });
+      }
+    }, (err) => {
+      console.warn('Firestore classrooms live snapshot notice:', err);
+    });
+
+    // 3. Listen for real-time System Audit Logs
+    const unsubLogs = onSnapshot(collection(db, 'auditLogs'), (snapshot) => {
+      if (!snapshot.empty) {
+        const remoteLogs: SystemAuditLog[] = [];
+        snapshot.forEach(docSnap => {
+          remoteLogs.push({ ...(docSnap.data() as SystemAuditLog), id: docSnap.id });
+        });
+        setAuditLogs(prev => {
+          const map = new Map<string, SystemAuditLog>();
+          prev.forEach(l => map.set(l.id, l));
+          remoteLogs.forEach(l => map.set(l.id, l));
+          return Array.from(map.values()).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+        });
+      }
+    }, (err) => {
+      console.warn('Firestore auditLogs live snapshot notice:', err);
+    });
+
+    // 4. Listen for real-time School Profile & Logo changes from Firestore
+    const unsubProfile = onSnapshot(doc(db, 'settings', 'schoolProfile'), (docSnap) => {
+      if (docSnap.exists()) {
+        const remoteProfile = docSnap.data() as SchoolProfile;
+        setSchoolProfile(prev => ({ ...prev, ...remoteProfile }));
+      }
+    }, (err) => {
+      console.warn('Firestore schoolProfile live snapshot notice:', err);
+    });
+
+    // 5. Cross-tab & Multi-window instant broadcast bus for 0ms local response
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        bc = new BroadcastChannel('dch_live_sync_bus');
+        bc.onmessage = (event) => {
+          const { type, data } = event.data || {};
+          if (type === 'PLAN_APPROVED' || type === 'PLAN_STATUS_CHANGED' || type === 'PLAN_UPDATED') {
+            const plan = data as LessonPlan;
+            setLessonPlans(prev => {
+              const exists = prev.some(p => p.id === plan.id);
+              if (!exists) {
+                return [plan, ...prev];
+              }
+              return prev.map(p => p.id === plan.id ? plan : p);
+            });
+            if (currentUser && currentUser.role === 'teacher' && (plan.teacherId === currentUser.id || plan.teacherEmail === currentUser.email)) {
+              if (plan.status === 'approved') {
+                const reviewer = plan.feedbackHistory?.[0]?.reviewerName || 'Academic Officer & Principal';
+                showToast(`🎉 LIVE UPDATE: Week ${plan.weekNumber} Lesson Plan was APPROVED by ${reviewer}!`, 'success');
+              } else if (plan.status === 'revision_requested') {
+                showToast(`⚠️ LIVE UPDATE: Revision requested on Week ${plan.weekNumber} Lesson Plan.`, 'warning');
+              }
+            }
+            if (selectedPlan && selectedPlan.id === plan.id) {
+              setSelectedPlan(plan);
+            }
+          } else if (type === 'PLAN_DELETED') {
+            const id = data as string;
+            setLessonPlans(prev => prev.filter(p => p.id !== id));
+            if (selectedPlan && selectedPlan.id === id) {
+              setSelectedPlan(null);
+            }
+          } else if (type === 'CLASSROOM_UPDATED') {
+            const classroom = data as Classroom;
+            setClassrooms(prev => prev.map(c => c.id === classroom.id ? classroom : c));
+          } else if (type === 'CLASSROOM_DELETED') {
+            const id = data as string;
+            setClassrooms(prev => prev.filter(c => c.id !== id));
+          } else if (type === 'CLASSROOM_ADDED') {
+            const classroom = data as Classroom;
+            setClassrooms(prev => prev.some(c => c.id === classroom.id) ? prev.map(c => c.id === classroom.id ? classroom : c) : [classroom, ...prev]);
+          } else if (type === 'SCHOOL_PROFILE_UPDATED') {
+            const profile = data as SchoolProfile;
+            setSchoolProfile(profile);
+          } else if (type === 'ACCOUNTS_UPDATED') {
+            const accounts = data as UserAccount[];
+            setAllAccounts(accounts);
+          } else if (type === 'FORCE_SYNC_TRIGGERED') {
+            if (data?.timestamp) {
+              setLastSyncedAt(data.timestamp);
+            }
+            showToast(`📡 Live cloud sync triggered: ${data?.message || 'Database synchronized'}`, 'info');
+          }
+        };
+      }
+    } catch {}
+
+    // 6. Cross-tab storage fallback listener
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (!e.newValue) return;
+      try {
+        if (e.key === STORAGE_KEYS.SCHOOL_PROFILE) {
+          const profile = JSON.parse(e.newValue);
+          setSchoolProfile(profile);
+        } else if (e.key === STORAGE_KEYS.LESSON_PLANS) {
+          const plans = JSON.parse(e.newValue);
+          setLessonPlans(plans);
+        } else if (e.key === STORAGE_KEYS.CLASSROOMS) {
+          const cls = JSON.parse(e.newValue);
+          setClassrooms(cls);
+        } else if (e.key === STORAGE_KEYS.ACCOUNTS) {
+          const acc = JSON.parse(e.newValue);
+          setAllAccounts(acc);
+        }
+      } catch {}
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorageEvent);
+    }
+
+    return () => {
+      unsubPlans();
+      unsubClassrooms();
+      unsubLogs();
+      unsubProfile();
+      if (bc) bc.close();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', handleStorageEvent);
+      }
+    };
+  }, [currentUser, selectedPlan]);
 
   // Sync to local storage
   useEffect(() => {
@@ -266,17 +571,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [auditLogs]);
 
   useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.SCHOOL_PROFILE, JSON.stringify(schoolProfile));
+  }, [schoolProfile]);
+
+  useEffect(() => {
     if (currentUser) {
       localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, currentUser.id);
     }
   }, [currentUser]);
-
-  const showToast = (text: string, type: 'success' | 'info' | 'warning' | 'error' = 'success') => {
-    setToastMessage({ text, type });
-    setTimeout(() => {
-      setToastMessage((prev) => (prev?.text === text ? null : prev));
-    }, 4000);
-  };
 
   const addAuditLog = (action: SystemAuditLog['action'], details: string, targetId?: string) => {
     const now = new Date().toISOString().replace('T', ' ').substring(0, 16);
@@ -304,6 +606,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (found) {
       setCurrentUser(found);
       setIsAuthenticated(true);
+      sessionStorage.setItem(STORAGE_KEYS.SESSION_ACTIVE, 'true');
       localStorage.setItem(STORAGE_KEYS.IS_LOGGED_IN, 'true');
       localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, found.id);
       setSelectedPlan(null);
@@ -348,6 +651,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         setCurrentUser(accountToUse);
         setIsAuthenticated(true);
+        sessionStorage.setItem(STORAGE_KEYS.SESSION_ACTIVE, 'true');
         localStorage.setItem(STORAGE_KEYS.IS_LOGGED_IN, 'true');
         localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, accountToUse.id);
         setIsAuthModalOpen(false);
@@ -377,6 +681,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setCurrentUser(found);
     setIsAuthenticated(true);
+    sessionStorage.setItem(STORAGE_KEYS.SESSION_ACTIVE, 'true');
     localStorage.setItem(STORAGE_KEYS.IS_LOGGED_IN, 'true');
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, found.id);
     setIsAuthModalOpen(false);
@@ -508,6 +813,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       setCurrentUser(existing);
       setIsAuthenticated(true);
+      sessionStorage.setItem(STORAGE_KEYS.SESSION_ACTIVE, 'true');
       localStorage.setItem(STORAGE_KEYS.IS_LOGGED_IN, 'true');
       localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, existing.id);
       setIsAuthModalOpen(false);
@@ -527,9 +833,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
     setIsAuthenticated(false);
     setCurrentUser(null);
+    sessionStorage.removeItem(STORAGE_KEYS.SESSION_ACTIVE);
     localStorage.removeItem(STORAGE_KEYS.IS_LOGGED_IN);
     localStorage.removeItem(STORAGE_KEYS.CURRENT_USER_ID);
-    showToast('Signed out of DCH Portal. Please sign in or register to access.', 'info');
+    showToast('Signed out of DCH Portal. Please sign in to access.', 'info');
   };
 
   const openSignInModal = () => {
@@ -543,19 +850,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateAccount = (userId: string, updates: Partial<UserAccount>) => {
-    setAllAccounts(prev => prev.map(acc => {
-      if (acc.id === userId) {
-        const updated = { ...acc, ...updates };
-        if (currentUser && currentUser.id === userId) {
-          setCurrentUser(updated);
+    let updatedAccountsList: UserAccount[] = [];
+    setAllAccounts(prev => {
+      const next = prev.map(acc => {
+        if (acc.id === userId) {
+          const updated = { ...acc, ...updates };
+          if (currentUser && currentUser.id === userId) {
+            setCurrentUser(updated);
+          }
+          try {
+            const cleanUser = sanitizeForFirestore(updated);
+            setDoc(doc(db, 'users', userId), cleanUser, { merge: true }).catch(() => {});
+          } catch {}
+          return updated;
         }
-        try {
-          updateDoc(doc(db, 'users', userId), updates).catch(() => {});
-        } catch {}
-        return updated;
-      }
-      return acc;
-    }));
+        return acc;
+      });
+      updatedAccountsList = next;
+      return next;
+    });
+    if (updatedAccountsList.length > 0) {
+      broadcastLiveSync('ACCOUNTS_UPDATED', updatedAccountsList);
+    }
     addAuditLog('ROLE_CHANGE', `Updated account information for user ID ${userId}`, userId);
     showToast('Account details updated successfully', 'success');
   };
@@ -566,10 +882,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
     const target = allAccounts.find(a => a.id === userId);
-    setAllAccounts(prev => prev.filter(a => a.id !== userId));
+    let updatedList: UserAccount[] = [];
+    setAllAccounts(prev => {
+      const next = prev.filter(a => a.id !== userId);
+      updatedList = next;
+      return next;
+    });
     try {
       deleteDoc(doc(db, 'users', userId)).catch(() => {});
     } catch {}
+    if (updatedList.length > 0) {
+      broadcastLiveSync('ACCOUNTS_UPDATED', updatedList);
+    }
     addAuditLog('DELETE_USER', `Deleted account of ${target?.name || userId}`, userId);
     showToast(`Account for ${target?.name || 'user'} has been removed.`, 'info');
   };
@@ -603,11 +927,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setLessonPlans(prev => [newPlan, ...prev]);
 
     try {
-      setDoc(doc(db, 'lessonPlans', newPlan.id), newPlan).catch((err) => {
+      const cleanPlan = sanitizeForFirestore(newPlan);
+      setDoc(doc(db, 'lessonPlans', newPlan.id), cleanPlan, { merge: true }).catch((err) => {
         handleFirestoreError(err, OperationType.CREATE, 'lessonPlans');
       });
     } catch {}
 
+    broadcastLiveSync('PLAN_UPDATED', newPlan);
     addAuditLog('CREATE_PLAN', `Created new lesson plan "${newPlan.themeTitle}" for Week ${newPlan.weekNumber}`, newPlan.id);
     showToast(`Lesson Plan for Week ${newPlan.weekNumber} saved & synced to Firebase!`, 'success');
     return newPlan;
@@ -615,21 +941,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateLessonPlan = (id: string, updates: Partial<LessonPlan>) => {
     const now = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    let updatedPlanObj: LessonPlan | null = null;
     setLessonPlans(prev =>
       prev.map(p => {
         if (p.id === id) {
           const updated = { ...p, ...updates, updatedAt: now };
+          updatedPlanObj = updated;
           if (selectedPlan && selectedPlan.id === id) {
             setSelectedPlan(updated);
           }
           try {
-            updateDoc(doc(db, 'lessonPlans', id), updates).catch(() => {});
+            const cleanPlan = sanitizeForFirestore(updated);
+            setDoc(doc(db, 'lessonPlans', id), cleanPlan, { merge: true }).catch(() => {});
           } catch {}
           return updated;
         }
         return p;
       })
     );
+    if (updatedPlanObj) {
+      broadcastLiveSync('PLAN_UPDATED', updatedPlanObj);
+    }
     addAuditLog('UPDATE_PLAN', `Updated details for lesson plan ID ${id}`, id);
     showToast('Lesson plan updated and synced', 'success');
   };
@@ -643,6 +975,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       deleteDoc(doc(db, 'lessonPlans', id)).catch(() => {});
     } catch {}
+    broadcastLiveSync('PLAN_DELETED', id);
     addAuditLog('DELETE_PLAN', `Deleted lesson plan "${target?.themeTitle || id}" by ${currentUser?.name || 'Staff'}`, id);
     showToast(`Lesson plan "${target?.themeTitle || 'item'}" removed.`, 'info');
   };
@@ -675,6 +1008,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       rubricScores: rubric,
     };
 
+    let updatedPlanToBroadcast: LessonPlan | null = null;
+
     setLessonPlans(prev =>
       prev.map(p => {
         if (p.id === planId) {
@@ -692,21 +1027,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             feedbackHistory: [feedbackItem, ...p.feedbackHistory],
             updatedAt: now,
           };
+          updatedPlanToBroadcast = updated;
           if (selectedPlan?.id === planId) {
             setSelectedPlan(updated);
           }
           try {
-            updateDoc(doc(db, 'lessonPlans', planId), {
-              status: nextStatus,
-              reviewedAt: now,
-              feedbackHistory: updated.feedbackHistory
-            }).catch(() => {});
+            const cleanPlan = sanitizeForFirestore(updated);
+            setDoc(doc(db, 'lessonPlans', planId), cleanPlan, { merge: true }).catch(() => {});
           } catch {}
           return updated;
         }
         return p;
       })
     );
+
+    if (updatedPlanToBroadcast) {
+      broadcastLiveSync('PLAN_APPROVED', updatedPlanToBroadcast);
+    }
 
     const logAction = action === 'approved' ? 'APPROVE_PLAN' : action === 'revision_requested' ? 'REVISE_PLAN' : 'UPDATE_PLAN';
     addAuditLog(logAction, `${currentUser?.name || 'Staff'} took action "${action}" on plan ID ${planId}: "${comment}"`, planId);
@@ -721,6 +1058,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const batchApprovePlans = (planIds: string[]) => {
     const now = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    const approvedPlans: LessonPlan[] = [];
     setLessonPlans(prev =>
       prev.map(p => {
         if (planIds.includes(p.id) && (p.status === 'submitted' || p.status === 'under_review')) {
@@ -741,14 +1079,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               ...p.feedbackHistory,
             ],
           };
+          approvedPlans.push(updated);
           try {
-            updateDoc(doc(db, 'lessonPlans', p.id), { status: 'approved', reviewedAt: now }).catch(() => {});
+            const cleanPlan = sanitizeForFirestore(updated);
+            setDoc(doc(db, 'lessonPlans', p.id), cleanPlan, { merge: true }).catch(() => {});
           } catch {}
           return updated;
         }
         return p;
       })
     );
+    approvedPlans.forEach(ap => broadcastLiveSync('PLAN_APPROVED', ap));
     addAuditLog('APPROVE_PLAN', `Batch approved ${planIds.length} lesson plan(s) by ${currentUser?.name || 'Admin'}`);
     showToast(`Approved ${planIds.length} lesson plan(s)`, 'success');
   };
@@ -772,11 +1113,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ageGroup: newClassroom.ageGroup
           };
           try {
-            updateDoc(doc(db, 'users', acc.id), {
-              assignedClassId: newClassroom.id,
-              assignedClassName: newClassroom.name,
-              ageGroup: newClassroom.ageGroup
-            }).catch(() => {});
+            const cleanUser = sanitizeForFirestore(updated);
+            setDoc(doc(db, 'users', acc.id), cleanUser, { merge: true }).catch(() => {});
           } catch {}
           return updated;
         }
@@ -785,19 +1123,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     try {
-      setDoc(doc(db, 'classrooms', newClassroom.id), newClassroom).catch(() => {});
+      const cleanClass = sanitizeForFirestore(newClassroom);
+      setDoc(doc(db, 'classrooms', newClassroom.id), cleanClass, { merge: true }).catch(() => {});
     } catch {}
 
+    broadcastLiveSync('CLASSROOM_ADDED', newClassroom);
     addAuditLog('ADD_CLASSROOM', `Created classroom "${newClassroom.name}" (${newClassroom.code}) - ${newClassroom.ageGroup}`, newClassroom.id);
     showToast(`Classroom "${newClassroom.name}" successfully created!`, 'success');
     return newClassroom;
   };
 
   const updateClassroom = (id: string, updates: Partial<Classroom>) => {
+    let updatedClassroomObj: Classroom | null = null;
     let updatedClassroomName = '';
     setClassrooms(prev => prev.map(c => {
       if (c.id === id) {
         const updated = { ...c, ...updates };
+        updatedClassroomObj = updated;
         updatedClassroomName = updated.name;
         return updated;
       }
@@ -816,11 +1158,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ageGroup: updates.ageGroup || acc.ageGroup
           };
           try {
-            updateDoc(doc(db, 'users', acc.id), {
-              assignedClassId: id,
-              assignedClassName: updates.name || acc.assignedClassName,
-              ageGroup: updates.ageGroup || acc.ageGroup
-            }).catch(() => {});
+            const cleanUser = sanitizeForFirestore(updated);
+            setDoc(doc(db, 'users', acc.id), cleanUser, { merge: true }).catch(() => {});
           } catch {}
           return updated;
         }
@@ -832,10 +1171,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ageGroup: updates.ageGroup || acc.ageGroup
           };
           try {
-            updateDoc(doc(db, 'users', acc.id), {
-              assignedClassName: updates.name || acc.assignedClassName,
-              ageGroup: updates.ageGroup || acc.ageGroup
-            }).catch(() => {});
+            const cleanUser = sanitizeForFirestore(updated);
+            setDoc(doc(db, 'users', acc.id), cleanUser, { merge: true }).catch(() => {});
           } catch {}
           return updated;
         }
@@ -844,9 +1181,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     try {
-      updateDoc(doc(db, 'classrooms', id), updates).catch(() => {});
+      if (updatedClassroomObj) {
+        const cleanClass = sanitizeForFirestore(updatedClassroomObj);
+        setDoc(doc(db, 'classrooms', id), cleanClass, { merge: true }).catch(() => {});
+      }
     } catch {}
 
+    if (updatedClassroomObj) {
+      broadcastLiveSync('CLASSROOM_UPDATED', updatedClassroomObj);
+    }
     addAuditLog('UPDATE_CLASSROOM', `Updated classroom "${updatedClassroomName || id}" configuration & assignments`, id);
     showToast(`Classroom "${updatedClassroomName || 'details'}" successfully updated`, 'success');
   };
@@ -881,6 +1224,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deleteDoc(doc(db, 'classrooms', id)).catch(() => {});
     } catch {}
 
+    broadcastLiveSync('CLASSROOM_DELETED', id);
     addAuditLog('DELETE_CLASSROOM', `Deleted classroom "${className}" (${target?.code || ''}) and unlinked assigned faculty`, id);
     showToast(`Classroom "${className}" removed successfully`, 'info');
   };
@@ -901,6 +1245,142 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  const pushLiveUpdate = async (customMessage?: string) => {
+    setIsSyncingLive(true);
+    try {
+      const now = new Date().toISOString();
+      
+      // 1. Sanitize & write School Profile to Firestore
+      const cleanProfile = sanitizeForFirestore({
+        ...schoolProfile,
+        updatedAt: now,
+        updatedBy: currentUser ? `${currentUser.name} (${currentUser.role})` : 'Authorized Staff'
+      });
+      await setDoc(doc(db, 'settings', 'schoolProfile'), cleanProfile, { merge: true }).catch((err) => {
+        console.warn('Firestore settings update notice:', err);
+      });
+
+      // 2. Sanitize & write all Lesson Plans to Firestore
+      for (const plan of lessonPlans) {
+        const cleanPlan = sanitizeForFirestore(plan);
+        await setDoc(doc(db, 'lessonPlans', plan.id), cleanPlan, { merge: true }).catch(() => {});
+      }
+
+      // 3. Sanitize & write all Classrooms to Firestore
+      for (const c of classrooms) {
+        const cleanClass = sanitizeForFirestore(c);
+        await setDoc(doc(db, 'classrooms', c.id), cleanClass, { merge: true }).catch(() => {});
+      }
+
+      // 4. Sanitize & write all User accounts
+      for (const u of allAccounts) {
+        const cleanUser = sanitizeForFirestore(u);
+        await setDoc(doc(db, 'users', u.id), cleanUser, { merge: true }).catch(() => {});
+      }
+
+      // 5. Broadcast to all open tabs and windows
+      broadcastLiveSync('FORCE_SYNC_TRIGGERED', {
+        timestamp: now,
+        sender: currentUser?.name || 'Staff Member',
+        message: customMessage || `Manual Push Live Update synchronized (${lessonPlans.length} plans, ${classrooms.length} classrooms)`
+      });
+
+      setLastSyncedAt(now);
+      addAuditLog('PUSH_LIVE_UPDATE', customMessage || `Pushed live updates & synchronized institutional database (${lessonPlans.length} plans, ${classrooms.length} classrooms)`);
+      showToast('🚀 Live update successfully pushed & synced with Firebase cloud!', 'success');
+    } catch (err: any) {
+      console.warn('Push live update notice:', err);
+      showToast('Push update completed locally; synced across active tabs.', 'info');
+    } finally {
+      setIsSyncingLive(false);
+    }
+  };
+
+  const forceCloudSync = async () => {
+    await pushLiveUpdate('Manual cloud database synchronization');
+  };
+
+  const updateSchoolProfile = async (updates: Partial<SchoolProfile>) => {
+    const updated: SchoolProfile = {
+      ...schoolProfile,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+      updatedBy: currentUser ? `${currentUser.name} (${currentUser.role})` : 'Authorized Admin'
+    };
+
+    setSchoolProfile(updated);
+    localStorage.setItem(STORAGE_KEYS.SCHOOL_PROFILE, JSON.stringify(updated));
+
+    try {
+      const cleanProfile = sanitizeForFirestore(updated);
+      await setDoc(doc(db, 'settings', 'schoolProfile'), cleanProfile, { merge: true });
+    } catch (e) {
+      console.warn('Firestore schoolProfile update warning/notice:', e);
+    }
+
+    broadcastLiveSync('SCHOOL_PROFILE_UPDATED', updated);
+    addAuditLog('UPDATE_SCHOOL_PROFILE', `Updated School Profile information (${updated.schoolNameEnglish})`);
+    showToast('School profile and web app details updated & broadcast live!', 'success');
+  };
+
+  const uploadCustomLogo = async (fileOrDataUrl: File | string): Promise<string> => {
+    let logoDataUrl = '';
+    if (typeof fileOrDataUrl === 'string') {
+      logoDataUrl = fileOrDataUrl;
+    } else {
+      logoDataUrl = await processImageFileToDataUrl(fileOrDataUrl);
+    }
+
+    const updated: SchoolProfile = {
+      ...schoolProfile,
+      customLogoUrl: logoDataUrl,
+      updatedAt: new Date().toISOString(),
+      updatedBy: currentUser ? `${currentUser.name} (${currentUser.role})` : 'Authorized Admin'
+    };
+
+    setSchoolProfile(updated);
+    localStorage.setItem(STORAGE_KEYS.SCHOOL_PROFILE, JSON.stringify(updated));
+
+    try {
+      const cleanProfile = sanitizeForFirestore(updated);
+      await setDoc(doc(db, 'settings', 'schoolProfile'), cleanProfile, { merge: true });
+    } catch (e) {
+      console.warn('Firestore custom logo update warning:', e);
+    }
+
+    broadcastLiveSync('SCHOOL_PROFILE_UPDATED', updated);
+    addAuditLog('UPDATE_LOGO', 'Replaced school logo with custom uploaded artwork');
+    showToast('New school logo uploaded and applied across portal', 'success');
+    return logoDataUrl;
+  };
+
+  const resetLogoToDefault = async () => {
+    const updated: SchoolProfile = {
+      ...schoolProfile,
+      customLogoUrl: null,
+      updatedAt: new Date().toISOString(),
+      updatedBy: currentUser ? `${currentUser.name} (${currentUser.role})` : 'Authorized Admin'
+    };
+
+    setSchoolProfile(updated);
+    localStorage.setItem(STORAGE_KEYS.SCHOOL_PROFILE, JSON.stringify(updated));
+
+    try {
+      const cleanProfile = sanitizeForFirestore(updated);
+      await setDoc(doc(db, 'settings', 'schoolProfile'), cleanProfile, { merge: true });
+    } catch (e) {
+      console.warn('Firestore logo reset warning:', e);
+    }
+
+    broadcastLiveSync('SCHOOL_PROFILE_UPDATED', updated);
+    addAuditLog('RESET_LOGO', 'Restored official Dewey Childcare House master vector shield logo');
+    showToast('School logo reset to official DCH master insignia', 'info');
+  };
+
+  const openProfileModal = () => {
+    setIsProfileModalOpen(true);
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -918,6 +1398,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isFirebaseConnected,
         firebaseAuthUser,
         firebaseConfigInfo: firebaseConfig,
+        isSyncingLive,
+        lastSyncedAt,
+        pushLiveUpdate,
+        forceCloudSync,
         isAuthModalOpen,
         setIsAuthModalOpen,
         authModalMode,
@@ -945,6 +1429,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         showToast,
         activeTab,
         setActiveTab,
+        schoolProfile,
+        updateSchoolProfile,
+        uploadCustomLogo,
+        resetLogoToDefault,
+        isProfileModalOpen,
+        setIsProfileModalOpen,
+        openProfileModal,
       }}
     >
       {children}

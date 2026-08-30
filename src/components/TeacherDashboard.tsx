@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { LessonPlan } from '../types';
+import { LessonPlanTemplateModal } from './LessonPlanTemplateModal';
 import { 
   BookOpen, 
   Plus, 
@@ -17,7 +18,8 @@ import {
   Download,
   AlertCircle,
   HelpCircle,
-  School
+  School,
+  Table
 } from 'lucide-react';
 
 interface TeacherDashboardProps {
@@ -33,6 +35,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 }) => {
   const { currentUser, userLessonPlans, submitLessonPlan, classrooms, showToast } = useApp();
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
   const myClass = classrooms.find(c => c.id === currentUser.assignedClassId) || classrooms[0];
 
@@ -122,6 +125,18 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-xs border border-white/20 text-white text-xs font-semibold">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>Live Synced with Academic Office</span>
+            </div>
+            <button
+              onClick={() => setIsTemplateModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-3 bg-white/15 hover:bg-white/25 text-white font-bold text-sm rounded-2xl border border-white/30 backdrop-blur-xs transition-all active:scale-95 shadow-2xs"
+              title="Preview & print official blank or sample lesson plan format"
+            >
+              <Table className="w-4 h-4 text-emerald-200" />
+              <span>Official Format Template</span>
+            </button>
             <button
               onClick={onOpenNewPlan}
               className="flex items-center gap-2 px-5 py-3 bg-amber-500 hover:bg-amber-400 text-amber-950 font-extrabold text-sm rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95"
@@ -394,6 +409,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           </p>
         </div>
       </div>
+
+      {/* Official Template Format Modal */}
+      {isTemplateModalOpen && (
+        <LessonPlanTemplateModal
+          onClose={() => setIsTemplateModalOpen(false)}
+          onUseTemplate={() => {
+            setIsTemplateModalOpen(false);
+            onOpenNewPlan();
+          }}
+        />
+      )}
     </div>
   );
 };

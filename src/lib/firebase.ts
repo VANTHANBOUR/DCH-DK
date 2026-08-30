@@ -12,6 +12,7 @@ import {
 } from 'firebase/auth';
 import { 
   getFirestore, 
+  initializeFirestore,
   doc, 
   setDoc, 
   getDoc, 
@@ -47,8 +48,39 @@ googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
 
-// Initialize Firestore
-export const db: Firestore = getFirestore(app);
+// Initialize Firestore with ignoreUndefinedProperties to prevent write crashes
+export const db: Firestore = (() => {
+  try {
+    return initializeFirestore(app, {
+      ignoreUndefinedProperties: true
+    });
+  } catch {
+    return getFirestore(app);
+  }
+})();
+
+/**
+ * Deeply sanitizes any object for Firestore by removing `undefined` values,
+ * transforming empty strings or nulls safely.
+ */
+export function sanitizeForFirestore<T>(data: T): T {
+  if (data === null || data === undefined) {
+    return (data === undefined ? null : data) as unknown as T;
+  }
+  if (Array.isArray(data)) {
+    return data.map(item => sanitizeForFirestore(item)) as unknown as T;
+  }
+  if (typeof data === 'object' && !(data instanceof Date)) {
+    const result: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        result[key] = sanitizeForFirestore(value);
+      }
+    }
+    return result as T;
+  }
+  return data;
+}
 
 // Analytics setup guarded for browser support
 let analyticsInstance: any = null;

@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { LessonPlan, UserAccount, UserRole, Classroom } from '../types';
 import { StaffManagementModal } from './StaffManagementModal';
 import { ClassroomModal } from './ClassroomModal';
+import { SchoolProfileSettings } from './SchoolProfileSettings';
 import { 
   ShieldCheck, 
   Users, 
@@ -28,7 +29,9 @@ import {
   Briefcase,
   Layers,
   Settings,
-  Plus
+  Plus,
+  Building2,
+  Image as ImageIcon
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -53,10 +56,11 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
     updateClassroom,
     auditLogs,
     showToast,
-    openSignUpModal
+    openSignUpModal,
+    schoolProfile
   } = useApp();
 
-  const [activeSubTab, setActiveSubTab] = useState<'users' | 'plans' | 'classrooms' | 'logs'>('users');
+  const [activeSubTab, setActiveSubTab] = useState<'users' | 'plans' | 'classrooms' | 'logs' | 'profile'>('users');
   
   // User Management Filters & State
   const [userRoleFilter, setUserRoleFilter] = useState<string>('all');
@@ -290,7 +294,27 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
           <Activity className="w-4 h-4" />
           <span>System Audit Trails ({auditLogs.length})</span>
         </button>
+
+        <button
+          onClick={() => setActiveSubTab('profile')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+            activeSubTab === 'profile'
+              ? 'bg-[#007A43] text-white shadow-2xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <Building2 className="w-4 h-4" />
+          <span>School Profile & Logo</span>
+          {schoolProfile?.customLogoUrl && (
+            <span className="w-2 h-2 rounded-full bg-amber-400" />
+          )}
+        </button>
       </div>
+
+      {/* 0. SCHOOL PROFILE & LOGO MANAGEMENT */}
+      {activeSubTab === 'profile' && (
+        <SchoolProfileSettings />
+      )}
 
       {/* 1. USERS & STAFF DIRECTORY */}
       {activeSubTab === 'users' && (

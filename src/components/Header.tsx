@@ -19,19 +19,24 @@ import {
   LogIn,
   School,
   Activity,
-  KeyRound
+  KeyRound,
+  Building2,
+  Table,
+  FileCheck2
 } from 'lucide-react';
 
 interface HeaderProps {
   onOpenNewPlan: () => void;
   onOpenBrandGuide: () => void;
   onOpenNewTeacher: () => void;
+  onOpenFormatTemplate: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onOpenNewPlan,
   onOpenBrandGuide,
   onOpenNewTeacher,
+  onOpenFormatTemplate,
 }) => {
   const { 
     currentUser, 
@@ -43,7 +48,8 @@ export const Header: React.FC<HeaderProps> = ({
     userLessonPlans,
     openSignInModal,
     openSignUpModal,
-    signOut
+    signOut,
+    openProfileModal
   } = useApp();
 
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
@@ -155,7 +161,17 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Desktop Right Actions */}
-          <div className="hidden lg:flex items-center gap-2.5">
+          <div className="hidden lg:flex items-center gap-2">
+            {/* Format Template Quick Preview & Print */}
+            <button
+              onClick={onOpenFormatTemplate}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200/90 rounded-xl transition-all shadow-2xs"
+              title="View & Print Official Dewey Childcare House Lesson Plan Template Format"
+            >
+              <Table className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Format Template</span>
+            </button>
+
             {/* Quick Upload Button for Teacher */}
             {currentUser.role === 'teacher' && (
               <button
@@ -176,6 +192,18 @@ export const Header: React.FC<HeaderProps> = ({
               <Sparkles className="w-3.5 h-3.5 text-amber-600" />
               <span>Brand Guide</span>
             </button>
+
+            {/* School Profile & Logo Button for Admin */}
+            {currentUser.role === 'admin' && (
+              <button
+                onClick={openProfileModal}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-amber-950 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl transition-all"
+                title="Update Web App Profile & Replace School Logo"
+              >
+                <Building2 className="w-3.5 h-3.5 text-amber-700" />
+                <span>Profile & Logo</span>
+              </button>
+            )}
 
             {/* Role / Account Switcher Dropdown */}
             <div className="relative">
@@ -305,28 +333,43 @@ export const Header: React.FC<HeaderProps> = ({
                       })}
                     </div>
 
-                    <div className="mt-2 pt-2 border-t border-slate-100 grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => {
-                          setIsUserDropdownOpen(false);
-                          openSignInModal();
-                        }}
-                        className="flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
-                      >
-                        <LogIn className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Sign In Form</span>
-                      </button>
+                    <div className="mt-2 pt-2 border-t border-slate-100 space-y-1.5">
+                      {currentUser.role === 'admin' && (
+                        <button
+                          onClick={() => {
+                            setIsUserDropdownOpen(false);
+                            openProfileModal();
+                          }}
+                          className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-colors"
+                        >
+                          <Building2 className="w-3.5 h-3.5 text-amber-700" />
+                          <span>Update School Profile & Logo</span>
+                        </button>
+                      )}
 
-                      <button
-                        onClick={() => {
-                          setIsUserDropdownOpen(false);
-                          openSignUpModal();
-                        }}
-                        className="flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-[#007A43] hover:bg-emerald-50 rounded-xl transition-colors"
-                      >
-                        <UserPlus className="w-3.5 h-3.5 text-[#007A43]" />
-                        <span>Sign Up Staff</span>
-                      </button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => {
+                            setIsUserDropdownOpen(false);
+                            openSignInModal();
+                          }}
+                          className="flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+                        >
+                          <LogIn className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Sign In Form</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setIsUserDropdownOpen(false);
+                            openSignUpModal();
+                          }}
+                          className="flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-[#007A43] hover:bg-emerald-50 rounded-xl transition-colors"
+                        >
+                          <UserPlus className="w-3.5 h-3.5 text-[#007A43]" />
+                          <span>Sign Up Staff</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </>
@@ -376,6 +419,16 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Mobile Nav Links */}
           <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
+            <button
+              onClick={() => {
+                onOpenFormatTemplate();
+                setIsMobileMenuOpen(false);
+              }}
+              className="p-3 rounded-xl text-left border col-span-2 bg-emerald-50 text-emerald-950 border-emerald-200 flex items-center gap-2 font-bold"
+            >
+              <Table className="w-4 h-4 text-emerald-700" />
+              <span>📋 Official Format Template (Print / Blank)</span>
+            </button>
             <button
               onClick={() => {
                 setActiveTab('dashboard');

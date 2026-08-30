@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { LessonPlan } from '../types';
+import { LessonPlan, PlanAttachment } from '../types';
 import { BrandLogo, DCHShield } from './BrandLogo';
+import { OfficialTemplateView } from './OfficialTemplateView';
 import { 
   X, 
   Printer, 
@@ -19,7 +20,12 @@ import {
   Star,
   Check,
   Trash2,
-  Award
+  Award,
+  Eye,
+  FileSpreadsheet,
+  FileImage,
+  Table,
+  Layers
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -35,6 +41,9 @@ export const LessonPlanDetailModal: React.FC<LessonPlanDetailModalProps> = ({
   onEdit,
 }) => {
   const { currentUser, adminReviewPlan, deleteLessonPlan, showToast } = useApp();
+
+  // Tab switcher: Official Template vs Full Modular Dossier
+  const [viewMode, setViewMode] = useState<'official_template' | 'full_dossier'>('official_template');
 
   // Review Form State
   const [adminComment, setAdminComment] = useState('');
@@ -123,8 +132,147 @@ export const LessonPlanDetailModal: React.FC<LessonPlanDetailModalProps> = ({
     window.print();
   };
 
-  const simulateDownload = (filename: string) => {
-    showToast(`Downloading "${filename}"...`, 'info');
+  const handleExportWord = () => {
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Dewey Childcare House - ${plan.themeTitle}</title>
+        <style>
+          body { font-family: Calibri, Arial, sans-serif; margin: 40px; color: #000; }
+          .header { text-align: center; margin-bottom: 25px; }
+          .school-title { color: #006838; font-size: 24pt; font-weight: bold; text-transform: uppercase; margin: 0; font-family: Georgia, serif; }
+          .doc-title { font-size: 18pt; font-weight: bold; text-decoration: underline; margin-top: 6px; }
+          .meta-table { width: 100%; margin-bottom: 20px; font-size: 12pt; }
+          .meta-table td { padding: 6px 0; }
+          .section-title { font-weight: bold; font-size: 13pt; margin-top: 18px; margin-bottom: 8px; }
+          .section-content { margin-left: 25px; font-size: 11pt; }
+          table.session-table { width: 100%; border-collapse: collapse; border: 2px solid #000; margin-top: 8px; font-size: 10.5pt; }
+          table.session-table th, table.session-table td { border: 1.5px solid #000; padding: 8px; text-align: left; vertical-align: top; }
+          table.session-table th { background-color: #f2f2f2; font-weight: bold; }
+          .duration-col { width: 12%; text-align: center; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="school-title">Dewey Childcare House</div>
+          <div class="doc-title">Lesson Plan</div>
+        </div>
+
+        <table class="meta-table">
+          <tr>
+            <td width="50%"><strong>Date:</strong> ${plan.planDate || plan.startDate}</td>
+            <td width="50%"><strong>Week:</strong> Week ${plan.weekNumber}</td>
+          </tr>
+          <tr>
+            <td><strong>Class:</strong> ${plan.className} (${plan.ageGroup})</td>
+            <td><strong>Time:</strong> ${plan.timeStart || '08:30 AM'} to ${plan.timeEnd || '11:30 AM'}</td>
+          </tr>
+        </table>
+
+        <div class="section-title">I. &nbsp;&nbsp; Warm up/ circle time:</div>
+        <div class="section-content">
+          <p>${plan.warmUpCircleTime || plan.circleTimeActivities}</p>
+        </div>
+
+        <div class="section-title">II. &nbsp;&nbsp; 1<sup>st</sup> Session:</div>
+        <div class="section-content">
+          <p><strong>Subject:</strong> ${plan.firstSession?.subject || 'Language & Trilingual Early Literacy'}</p>
+          <table class="session-table">
+            <thead>
+              <tr>
+                <th width="30%">Topic/Activity</th>
+                <th width="30%">Objective(s)</th>
+                <th width="28%">Materials/ sources</th>
+                <th class="duration-col">Duration (mns)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${plan.firstSession?.activities?.map(a => `
+              <tr>
+                <td><strong>${a.topicActivity}</strong></td>
+                <td>${a.objectives}</td>
+                <td>${a.materialsSources}</td>
+                <td class="duration-col"><strong>${a.durationMins} mns</strong></td>
+              </tr>
+              `).join('') || ''}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="section-title">III. &nbsp;&nbsp; 2<sup>nd</sup> Session:</div>
+        <div class="section-content">
+          <p><strong>Subject:</strong> ${plan.secondSession?.subject || 'Sensory Discovery Science & Creative Play'}</p>
+          <table class="session-table">
+            <thead>
+              <tr>
+                <th width="30%">Topic/Activity</th>
+                <th width="30%">Objective(s)</th>
+                <th width="28%">Materials/ sources</th>
+                <th class="duration-col">Duration (mns)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${plan.secondSession?.activities?.map(a => `
+              <tr>
+                <td><strong>${a.topicActivity}</strong></td>
+                <td>${a.objectives}</td>
+                <td>${a.materialsSources}</td>
+                <td class="duration-col"><strong>${a.durationMins} mns</strong></td>
+              </tr>
+              `).join('') || ''}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="section-title">IV. &nbsp;&nbsp; Closing:</div>
+        <div class="section-content">
+          <p>${plan.closing || 'Review session highlights, tidy up learning areas, sing departure songs, and organize belongings for dismissal.'}</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob(['\ufeff', htmlContent], {
+      type: 'application/msword;charset=utf-8'
+    });
+    const url = URL.createObjectURL(blob);
+    const downloadLink = document.createElement('a');
+    downloadLink.href = url;
+    downloadLink.download = `Dewey_Childcare_House_${plan.className.replace(/\s+/g, '_')}_Week_${plan.weekNumber}.doc`;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    URL.revokeObjectURL(url);
+
+    showToast(`Exported "${plan.themeTitle}" to Word (.doc)`, 'success');
+  };
+
+  const [previewAttachment, setPreviewAttachment] = useState<PlanAttachment | null>(null);
+
+  const handleDownloadAttachment = (att: PlanAttachment) => {
+    if (att.url) {
+      const a = document.createElement('a');
+      a.href = att.url;
+      a.download = att.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast(`Downloading "${att.name}"`, 'success');
+    } else {
+      const content = `Dewey Childcare House Lesson Plan Attachment\nTheme: ${plan.themeTitle}\nClass: ${plan.className} (${plan.ageGroup})\nDocument: ${att.name}\nSize: ${att.size}\nDate: ${att.uploadedAt}\n\nOfficial curriculum records for Dewey Childcare House (DCH).`;
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = att.name.endsWith('.txt') ? att.name : `${att.name}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(`Downloading "${att.name}"`, 'success');
+    }
   };
 
   return (
@@ -132,7 +280,7 @@ export const LessonPlanDetailModal: React.FC<LessonPlanDetailModalProps> = ({
       <div className="bg-white rounded-3xl shadow-2xl border border-emerald-100 w-full max-w-4xl max-h-[94vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 print:shadow-none print:border-none print:max-h-none print:rounded-none">
         
         {/* Top Control Bar (Hidden on print) */}
-        <div className="px-6 py-3.5 bg-slate-900 text-white flex items-center justify-between print:hidden">
+        <div className="px-6 py-3.5 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-3 print:hidden">
           <div className="flex items-center gap-3">
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
               Lesson Plan Dossier
@@ -143,6 +291,33 @@ export const LessonPlanDetailModal: React.FC<LessonPlanDetailModalProps> = ({
             </span>
           </div>
 
+          {/* View Switcher Tabs in Header */}
+          <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl border border-slate-700">
+            <button
+              onClick={() => setViewMode('official_template')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                viewMode === 'official_template'
+                  ? 'bg-[#007A43] text-white shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+              }`}
+            >
+              <Table className="w-3.5 h-3.5" />
+              <span>Official Format Template</span>
+            </button>
+
+            <button
+              onClick={() => setViewMode('full_dossier')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                viewMode === 'full_dossier'
+                  ? 'bg-[#007A43] text-white shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Detailed EYFS Dossier</span>
+            </button>
+          </div>
+
           <div className="flex items-center gap-2">
             {isPlanOwner && (
               <button
@@ -150,7 +325,7 @@ export const LessonPlanDetailModal: React.FC<LessonPlanDetailModalProps> = ({
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl transition-colors"
               >
                 <Edit3 className="w-3.5 h-3.5 text-amber-400" />
-                <span>Edit Plan</span>
+                <span>Edit</span>
               </button>
             )}
 
@@ -166,12 +341,21 @@ export const LessonPlanDetailModal: React.FC<LessonPlanDetailModalProps> = ({
             )}
 
             <button
+              onClick={handleExportWord}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-300 text-xs font-bold rounded-xl transition-colors"
+              title="Export to Word Document"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Word</span>
+            </button>
+
+            <button
               onClick={handlePrint}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
               title="Print official letterhead lesson plan"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Print / Export PDF</span>
+              <span>Print / PDF</span>
             </button>
 
             <button
@@ -185,248 +369,241 @@ export const LessonPlanDetailModal: React.FC<LessonPlanDetailModalProps> = ({
 
         {/* Scrollable Printable Document Canvas */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 print:p-6 print:overflow-visible">
-          {/* Brand Letterhead Header */}
-          <div className="border-b-2 border-[#007A43] pb-4">
-            <BrandLogo variant="full-letterhead" />
-          </div>
+          
+          {/* VIEW MODE 1: OFFICIAL DCH TEMPLATE VIEW (MATCHING THE PAPER FORMAT) */}
+          {viewMode === 'official_template' && (
+            <div className="space-y-6 animate-in fade-in duration-150">
+              <OfficialTemplateView plan={plan} />
 
-          {/* Document Meta Row */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200/80">
-            <div className="flex items-center gap-3.5">
-              <img
-                src={plan.teacherAvatar}
-                alt={plan.teacherName}
-                className="w-12 h-12 rounded-2xl object-cover ring-2 ring-emerald-500/30"
-              />
-              <div>
-                <p className="text-xs text-emerald-800 font-bold uppercase tracking-wider">
-                  Lead Educator Submission
-                </p>
-                <h3 className="text-base font-extrabold text-slate-900">{plan.teacherName}</h3>
-                <p className="text-xs text-slate-600 font-medium">
-                  {plan.className} · {plan.ageGroup}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-row sm:flex-col items-start sm:items-end justify-between sm:justify-center gap-1">
-              {getStatusBadge(plan.status)}
-              <span className="text-[11px] text-slate-500 font-medium">
-                {plan.term} · Week {plan.weekNumber} ({plan.startDate} to {plan.endDate})
-              </span>
-            </div>
-          </div>
-
-          {/* Thematic Unit Banner */}
-          <div className="p-5 bg-gradient-to-br from-white to-slate-50 border border-slate-200 rounded-2xl space-y-2">
-            <span className="text-[11px] font-extrabold uppercase tracking-widest text-[#007A43]">
-              Thematic Curriculum Unit
-            </span>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
-              {plan.themeTitle}
-            </h2>
-            {plan.themeDescription && (
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed pt-1">
-                {plan.themeDescription}
-              </p>
-            )}
-
-            {/* Domains */}
-            <div className="flex flex-wrap gap-1.5 pt-2">
-              {plan.domains.map((dom, i) => (
-                <span
-                  key={i}
-                  className="px-2.5 py-1 bg-emerald-100/70 text-[#006838] border border-emerald-200 rounded-lg text-[11px] font-bold"
-                >
-                  {dom}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Trilingual Matrix Card */}
-          <div className="p-5 bg-emerald-50/40 border border-emerald-200 rounded-2xl space-y-3">
-            <div className="flex items-center gap-2">
-              <Languages className="w-4 h-4 text-emerald-700" />
-              <h4 className="text-xs font-black text-emerald-950 uppercase tracking-wider">
-                Trilingual Early Childhood Focus (English · Khmer · Chinese)
-              </h4>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="bg-white p-3.5 rounded-xl border border-emerald-100 shadow-2xs">
-                <p className="text-[11px] font-extrabold text-blue-700 uppercase mb-1.5">
-                  🇬🇧 English Vocabulary
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {plan.trilingualFocus.englishVocab.map((w, idx) => (
-                    <span key={idx} className="px-2 py-0.5 bg-blue-50 text-blue-900 rounded text-xs font-semibold">
-                      {w}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-white p-3.5 rounded-xl border border-emerald-100 shadow-2xs">
-                <p className="text-[11px] font-extrabold text-emerald-700 uppercase mb-1.5 font-['Battambang']">
-                  🇰🇭 Khmer Vocabulary & Phonics
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {plan.trilingualFocus.khmerVocab.map((w, idx) => (
-                    <span key={idx} className="px-2 py-0.5 bg-emerald-50 text-emerald-900 rounded text-xs font-bold font-['Battambang']">
-                      {w}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-white p-3.5 rounded-xl border border-emerald-100 shadow-2xs">
-                <p className="text-[11px] font-extrabold text-amber-700 uppercase mb-1.5">
-                  🇨🇳 Mandarin Immersion
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {plan.trilingualFocus.chineseVocab.map((w, idx) => (
-                    <span key={idx} className="px-2 py-0.5 bg-amber-50 text-amber-900 rounded text-xs font-semibold">
-                      {w}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-xs">
-              <div className="bg-white/90 p-3 rounded-xl border border-emerald-100">
-                <span className="font-bold text-slate-700 block mb-0.5">🎵 Songs & Circle Rhymes:</span>
-                <span className="text-slate-800">{plan.trilingualFocus.songOrRhyme}</span>
-              </div>
-              <div className="bg-white/90 p-3 rounded-xl border border-emerald-100">
-                <span className="font-bold text-slate-700 block mb-0.5">📖 Featured Literature:</span>
-                <span className="text-slate-800">{plan.trilingualFocus.storyBook}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Objectives */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
-              Learning Milestones & Objectives
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {plan.learningObjectives.map((obj, i) => (
-                <div key={i} className="flex items-start gap-2.5 p-3 bg-slate-50 border border-slate-200/80 rounded-xl">
-                  <span className="w-5 h-5 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
-                    {i + 1}
-                  </span>
-                  <span className="text-xs text-slate-800 font-medium leading-relaxed">{obj}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Daily Kindergarten Stations & Centers */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
-              Learning Centers & Activity Stations
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {plan.learningCenters.map((center) => (
-                <div key={center.id} className="p-3.5 bg-white border border-slate-200 rounded-xl shadow-2xs space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <h5 className="text-xs font-bold text-[#007A43]">{center.centerName}</h5>
+              {/* Administrative Review Section if present */}
+              {plan.feedbackHistory && plan.feedbackHistory.length > 0 && (
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 print:hidden">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-emerald-700" />
+                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                      Academic Office Review History
+                    </h4>
                   </div>
-                  <p className="text-xs text-slate-700 leading-relaxed">
-                    {center.activityDescription}
-                  </p>
-                  {center.materials && (
-                    <p className="text-[11px] text-slate-500 font-medium pt-1 border-t border-slate-100">
-                      <span className="font-bold text-slate-600">Supplies:</span> {center.materials}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Circle Time & Outdoor Play */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-4 bg-amber-50/50 border border-amber-200/70 rounded-2xl">
-              <h4 className="text-xs font-bold text-amber-900 uppercase mb-1">
-                ☀️ Circle Time & Morning Greeting
-              </h4>
-              <p className="text-xs text-slate-700 leading-relaxed">{plan.circleTimeActivities}</p>
-            </div>
-
-            <div className="p-4 bg-emerald-50/50 border border-emerald-200/70 rounded-2xl">
-              <h4 className="text-xs font-bold text-emerald-900 uppercase mb-1">
-                🏃 Outdoor Play & Gross Motor
-              </h4>
-              <p className="text-xs text-slate-700 leading-relaxed">{plan.outdoorSensoryPlay}</p>
-            </div>
-          </div>
-
-          {/* Attached Files & Documents */}
-          {plan.attachments && plan.attachments.length > 0 && (
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-              <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
-                Attached Documents & Worksheets ({plan.attachments.length})
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {plan.attachments.map((att) => (
-                  <div
-                    key={att.id}
-                    className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-2xs"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="p-2 bg-emerald-100 text-emerald-800 rounded-lg shrink-0">
-                        <FileText className="w-4 h-4" />
+                  <div className="space-y-2">
+                    {plan.feedbackHistory.map((fb) => (
+                      <div key={fb.id} className="p-3 bg-white border border-slate-200 rounded-xl text-xs space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-900">{fb.authorName} ({fb.authorRole})</span>
+                          <span className="text-[10px] text-slate-500">{fb.createdAt}</span>
+                        </div>
+                        <p className="text-slate-700">{fb.comment}</p>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-900 truncate">{att.name}</p>
-                        <p className="text-[10px] text-slate-500">{att.size} · {att.uploadedAt}</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => simulateDownload(att.name)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold rounded-lg border border-emerald-200 transition-colors"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Download</span>
-                    </button>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Review & Feedback History Log */}
-          {plan.feedbackHistory && plan.feedbackHistory.length > 0 && (
-            <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
-              <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-emerald-700" />
-                <span>Academic Director & Principal Feedback Log</span>
-              </h4>
-              <div className="space-y-2.5">
-                {plan.feedbackHistory.map((fb) => (
-                  <div key={fb.id} className="p-3.5 bg-white border border-slate-200 rounded-xl shadow-2xs space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck className="w-4 h-4 text-emerald-700" />
-                        <span className="text-xs font-bold text-slate-900">{fb.reviewerName}</span>
-                        <span className="text-[10px] text-slate-500 font-medium">({fb.reviewerRole})</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400">{fb.date}</span>
-                    </div>
-                    <p className="text-xs text-slate-700 italic">"{fb.comment}"</p>
-                    {fb.rubricScores && (
-                      <div className="flex flex-wrap gap-3 pt-1 text-[11px] font-semibold text-emerald-900 border-t border-slate-100">
-                        <span>Curriculum: {fb.rubricScores.curriculumAlignment}/5 ⭐</span>
-                        <span>Trilingual: {fb.rubricScores.trilingualIntegration}/5 ⭐</span>
-                        <span>Safety: {fb.rubricScores.sensorySafety}/5 ⭐</span>
-                      </div>
-                    )}
-                  </div>
-                ))}
+          {/* VIEW MODE 2: FULL DETAILED EYFS DOSSIER */}
+          {viewMode === 'full_dossier' && (
+            <div className="space-y-6 animate-in fade-in duration-150">
+              {/* Brand Letterhead Header */}
+              <div className="border-b-2 border-[#007A43] pb-4">
+                <BrandLogo variant="full-letterhead" />
               </div>
+
+              {/* Document Meta Row */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200/80">
+                <div className="flex items-center gap-3.5">
+                  <img
+                    src={plan.teacherAvatar}
+                    alt={plan.teacherName}
+                    className="w-12 h-12 rounded-2xl object-cover ring-2 ring-emerald-500/30"
+                  />
+                  <div>
+                    <p className="text-xs text-emerald-800 font-bold uppercase tracking-wider">
+                      Lead Educator Submission
+                    </p>
+                    <h3 className="text-base font-extrabold text-slate-900">{plan.teacherName}</h3>
+                    <p className="text-xs text-slate-600 font-medium">
+                      {plan.className} · {plan.ageGroup}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-row sm:flex-col items-start sm:items-end justify-between sm:justify-center gap-1">
+                  {getStatusBadge(plan.status)}
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    {plan.term} · Week {plan.weekNumber} ({plan.startDate} to {plan.endDate})
+                  </span>
+                </div>
+              </div>
+
+              {/* Thematic Unit Banner */}
+              <div className="p-5 bg-gradient-to-br from-white to-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                <span className="text-[11px] font-extrabold uppercase tracking-widest text-[#007A43]">
+                  Thematic Curriculum Unit
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
+                  {plan.themeTitle}
+                </h2>
+                {plan.themeDescription && (
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed pt-1">
+                    {plan.themeDescription}
+                  </p>
+                )}
+
+                {/* Domains */}
+                <div className="flex flex-wrap gap-1.5 pt-2">
+                  {plan.domains.map((dom, i) => (
+                    <span
+                      key={i}
+                      className="px-2.5 py-1 bg-emerald-100/70 text-[#006838] border border-emerald-200 rounded-lg text-[11px] font-bold"
+                    >
+                      {dom}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Trilingual Matrix Card */}
+              <div className="p-5 bg-emerald-50/40 border border-emerald-200 rounded-2xl space-y-3">
+                <div className="flex items-center gap-2">
+                  <Languages className="w-4 h-4 text-emerald-700" />
+                  <h4 className="text-xs font-black text-emerald-950 uppercase tracking-wider">
+                    Trilingual Early Childhood Focus (English · Khmer · Chinese)
+                  </h4>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="bg-white p-3.5 rounded-xl border border-emerald-100 shadow-2xs">
+                    <p className="text-[11px] font-extrabold text-blue-700 uppercase mb-1.5">
+                      🇬🇧 English Vocabulary
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {plan.trilingualFocus.englishVocab.map((w, idx) => (
+                        <span key={idx} className="px-2 py-0.5 bg-blue-50 text-blue-900 rounded text-xs font-semibold">
+                          {w}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-3.5 rounded-xl border border-emerald-100 shadow-2xs">
+                    <p className="text-[11px] font-extrabold text-emerald-700 uppercase mb-1.5 font-['Battambang']">
+                      🇰🇭 Khmer Vocabulary & Phonics
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {plan.trilingualFocus.khmerVocab.map((w, idx) => (
+                        <span key={idx} className="px-2 py-0.5 bg-emerald-50 text-emerald-900 rounded text-xs font-semibold font-['Battambang']">
+                          {w}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-3.5 rounded-xl border border-emerald-100 shadow-2xs">
+                    <p className="text-[11px] font-extrabold text-amber-700 uppercase mb-1.5">
+                      🇨🇳 Mandarin Vocabulary & Pinyin
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {plan.trilingualFocus.chineseVocab.map((w, idx) => (
+                        <span key={idx} className="px-2 py-0.5 bg-amber-50 text-amber-900 rounded text-xs font-semibold">
+                          {w}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div className="bg-white p-3 rounded-xl border border-emerald-100 text-xs">
+                    <span className="font-bold text-slate-700">🎵 Songs & Rhymes: </span>
+                    <span className="text-slate-900 font-medium">{plan.trilingualFocus.songOrRhyme}</span>
+                  </div>
+                  <div className="bg-white p-3 rounded-xl border border-emerald-100 text-xs">
+                    <span className="font-bold text-slate-700">📖 Featured Storybook: </span>
+                    <span className="text-slate-900 font-medium">{plan.trilingualFocus.storyBook}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Learning Objectives */}
+              <div className="p-5 bg-white border border-slate-200 rounded-2xl space-y-3">
+                <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                  Targeted Learning Objectives & Milestones
+                </h4>
+                <ul className="space-y-2">
+                  {plan.learningObjectives.map((obj, idx) => (
+                    <li key={idx} className="flex items-start gap-2.5 text-xs text-slate-800 font-medium">
+                      <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        {idx + 1}
+                      </div>
+                      <span className="leading-relaxed">{obj}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Daily Structure (Circle Time, Learning Centers, Outdoor Play) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                  <h4 className="text-xs font-bold text-slate-900">☀️ Circle Time & Morning Greeting</h4>
+                  <p className="text-xs text-slate-700 leading-relaxed">{plan.circleTimeActivities}</p>
+                </div>
+
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                  <h4 className="text-xs font-bold text-slate-900">🏃 Outdoor Play & Gross Motor Activity</h4>
+                  <p className="text-xs text-slate-700 leading-relaxed">{plan.outdoorSensoryPlay}</p>
+                </div>
+              </div>
+
+              {/* Learning Centers */}
+              <div className="p-5 bg-white border border-slate-200 rounded-2xl space-y-3">
+                <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                  Learning Centers & Exploration Stations
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {plan.learningCenters.map((lc) => (
+                    <div key={lc.id} className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+                      <h5 className="text-xs font-bold text-[#007A43]">{lc.centerName}</h5>
+                      <p className="text-[11px] text-slate-700 leading-relaxed">{lc.activityDescription}</p>
+                      <p className="text-[10px] text-slate-500 pt-1">
+                        <strong>Realia:</strong> {lc.materials}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Attachments Section */}
+              {plan.attachments && plan.attachments.length > 0 && (
+                <div className="p-5 bg-white border border-slate-200 rounded-2xl space-y-3 print:hidden">
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-emerald-700" />
+                    <span>Uploaded Curriculum Files & Documents</span>
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {plan.attachments.map((att) => (
+                      <div
+                        key={att.id}
+                        className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl"
+                      >
+                        <div className="flex items-center gap-2.5 truncate pr-2">
+                          <FileText className="w-4 h-4 text-emerald-700 shrink-0" />
+                          <div className="truncate">
+                            <p className="text-xs font-bold text-slate-900 truncate">{att.name}</p>
+                            <p className="text-[10px] text-slate-500">{att.size}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleDownloadAttachment(att)}
+                          className="px-2.5 py-1 bg-white hover:bg-slate-100 text-emerald-800 border border-slate-200 rounded-lg text-xs font-bold transition-colors shrink-0 flex items-center gap-1"
+                        >
+                          <Download className="w-3 h-3" />
+                          <span>Download</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

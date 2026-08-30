@@ -50,9 +50,28 @@ export interface SystemAuditLog {
   actorId: string;
   actorName: string;
   actorRole: UserRole;
-  action: 'CREATE_PLAN' | 'UPDATE_PLAN' | 'SUBMIT_PLAN' | 'APPROVE_PLAN' | 'REVISE_PLAN' | 'DELETE_PLAN' | 'USER_SIGNUP' | 'USER_LOGIN' | 'ROLE_CHANGE' | 'DELETE_USER' | 'ADD_CLASSROOM' | 'UPDATE_CLASSROOM' | 'DELETE_CLASSROOM';
+  action: 'CREATE_PLAN' | 'UPDATE_PLAN' | 'SUBMIT_PLAN' | 'APPROVE_PLAN' | 'REVISE_PLAN' | 'DELETE_PLAN' | 'USER_SIGNUP' | 'USER_LOGIN' | 'ROLE_CHANGE' | 'DELETE_USER' | 'ADD_CLASSROOM' | 'UPDATE_CLASSROOM' | 'DELETE_CLASSROOM' | 'UPDATE_SCHOOL_PROFILE' | 'UPDATE_LOGO' | 'RESET_LOGO' | 'FORCE_SYNC' | 'PUSH_LIVE_UPDATE';
   details: string;
   targetId?: string;
+}
+
+export interface SchoolProfile {
+  schoolNameKhmer: string;
+  schoolNameEnglish: string;
+  schoolAbbreviation: string;
+  taglineKhmer: string;
+  taglineEnglish: string;
+  portalBadgeText: string;
+  customLogoUrl: string | null;
+  campus?: string;
+  contactEmail: string;
+  contactPhone: string;
+  address: string;
+  academicYear: string;
+  currentTerm: string;
+  websiteUrl?: string;
+  updatedAt?: string;
+  updatedBy?: string;
 }
 
 export interface Classroom {
@@ -111,6 +130,19 @@ export interface AdminReviewFeedback {
   };
 }
 
+export interface SessionActivityRow {
+  id: string;
+  topicActivity: string;
+  objectives: string;
+  materialsSources: string;
+  durationMins: number | string;
+}
+
+export interface OfficialSessionPlan {
+  subject: string;
+  activities: SessionActivityRow[];
+}
+
 export interface LessonPlan {
   id: string;
   teacherId: string;
@@ -141,6 +173,15 @@ export interface LessonPlan {
   submittedAt?: string;
   reviewedAt?: string;
   feedbackHistory: AdminReviewFeedback[];
+
+  // Official Dewey Childcare House Format Template Fields
+  planDate?: string;
+  timeStart?: string;
+  timeEnd?: string;
+  warmUpCircleTime?: string;
+  firstSession?: OfficialSessionPlan;
+  secondSession?: OfficialSessionPlan;
+  closing?: string;
 }
 
 export interface WeeklyComplianceRecord {
