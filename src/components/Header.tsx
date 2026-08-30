@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { BrandLogo } from './BrandLogo';
+import { UserProfileModal } from './UserProfileModal';
+import { CampusTabsBar } from './CampusTabsBar';
 import { 
   Users, 
   ShieldCheck, 
@@ -22,21 +24,19 @@ import {
   KeyRound,
   Building2,
   Table,
-  FileCheck2
+  FileCheck2,
+  Camera,
+  User
 } from 'lucide-react';
 
 interface HeaderProps {
   onOpenNewPlan: () => void;
-  onOpenBrandGuide: () => void;
   onOpenNewTeacher: () => void;
-  onOpenFormatTemplate: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onOpenNewPlan,
-  onOpenBrandGuide,
   onOpenNewTeacher,
-  onOpenFormatTemplate,
 }) => {
   const { 
     currentUser, 
@@ -49,10 +49,13 @@ export const Header: React.FC<HeaderProps> = ({
     openSignInModal,
     openSignUpModal,
     signOut,
-    openProfileModal
+    openProfileModal,
+    selectedCampusId,
+    setSelectedCampusId,
   } = useApp();
 
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [isUserProfileEditorOpen, setIsUserProfileEditorOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   if (!currentUser) {
@@ -162,16 +165,6 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Desktop Right Actions */}
           <div className="hidden lg:flex items-center gap-2">
-            {/* Format Template Quick Preview & Print */}
-            <button
-              onClick={onOpenFormatTemplate}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200/90 rounded-xl transition-all shadow-2xs"
-              title="View & Print Official Dewey Childcare House Lesson Plan Template Format"
-            >
-              <Table className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Format Template</span>
-            </button>
-
             {/* Quick Upload Button for Teacher */}
             {currentUser.role === 'teacher' && (
               <button
@@ -183,21 +176,11 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            {/* Brand Guidelines */}
-            <button
-              onClick={onOpenBrandGuide}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-emerald-800 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 rounded-xl transition-all"
-              title="View Dewey Childcare House Brand Guidelines"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-              <span>Brand Guide</span>
-            </button>
-
             {/* School Profile & Logo Button for Admin */}
             {currentUser.role === 'admin' && (
               <button
                 onClick={openProfileModal}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-amber-950 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl transition-all"
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-amber-950 hover:text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl transition-all"
                 title="Update Web App Profile & Replace School Logo"
               >
                 <Building2 className="w-3.5 h-3.5 text-amber-700" />
@@ -334,6 +317,17 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
 
                     <div className="mt-2 pt-2 border-t border-slate-100 space-y-1.5">
+                      <button
+                        onClick={() => {
+                          setIsUserDropdownOpen(false);
+                          setIsUserProfileEditorOpen(true);
+                        }}
+                        className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 rounded-xl transition-colors"
+                      >
+                        <Camera className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Edit Profile & Picture</span>
+                      </button>
+
                       {currentUser.role === 'admin' && (
                         <button
                           onClick={() => {
@@ -398,6 +392,20 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
+      {/* Sub-strip Campus Tabs Bar */}
+      <div className="bg-slate-50/90 border-t border-slate-200/80 px-3 sm:px-6 lg:px-8 py-1.5 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-xs text-slate-500 font-bold shrink-0 hidden sm:flex">
+          <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+          <span>Campus Tab:</span>
+        </div>
+        <CampusTabsBar 
+          selectedCampusId={selectedCampusId}
+          onSelectCampus={setSelectedCampusId}
+          variant="tabs"
+          className="flex-1"
+        />
+      </div>
+
       {/* Mobile Drawer / Navigation */}
       {isMobileMenuOpen && (
         <div className="lg:hidden border-t border-emerald-100 bg-white px-4 py-4 space-y-4 shadow-lg animate-in slide-in-from-top duration-200">
@@ -419,16 +427,6 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Mobile Nav Links */}
           <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
-            <button
-              onClick={() => {
-                onOpenFormatTemplate();
-                setIsMobileMenuOpen(false);
-              }}
-              className="p-3 rounded-xl text-left border col-span-2 bg-emerald-50 text-emerald-950 border-emerald-200 flex items-center gap-2 font-bold"
-            >
-              <Table className="w-4 h-4 text-emerald-700" />
-              <span>📋 Official Format Template (Print / Blank)</span>
-            </button>
             <button
               onClick={() => {
                 setActiveTab('dashboard');
@@ -532,6 +530,10 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
         </div>
+      )}
+
+      {isUserProfileEditorOpen && (
+        <UserProfileModal onClose={() => setIsUserProfileEditorOpen(false)} />
       )}
     </header>
   );

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Classroom, LessonPlan } from '../types';
+import { Classroom, LessonPlan, CAMPUS_LIST } from '../types';
 import { ClassroomModal } from './ClassroomModal';
 import { 
   Users, 
@@ -21,11 +21,16 @@ interface ClassroomDirectoryProps {
 }
 
 export const ClassroomDirectory: React.FC<ClassroomDirectoryProps> = ({ onSelectPlan }) => {
-  const { classrooms, allAccounts, lessonPlans, currentUser } = useApp();
+  const { classrooms, allAccounts, lessonPlans, currentUser, deleteClassroom, selectedCampusId } = useApp();
   const [isClassroomModalOpen, setIsClassroomModalOpen] = useState(false);
   const [selectedClassroomToEdit, setSelectedClassroomToEdit] = useState<Classroom | null>(null);
 
   const isAdmin = currentUser?.role === 'admin';
+
+  const displayedClassrooms = classrooms.filter(cls => {
+    if (!selectedCampusId || selectedCampusId === 'ALL') return true;
+    return cls.campusId === selectedCampusId;
+  });
 
   const handleOpenAddModal = () => {
     setSelectedClassroomToEdit(null);
@@ -73,32 +78,47 @@ export const ClassroomDirectory: React.FC<ClassroomDirectoryProps> = ({ onSelect
 
         {/* Classroom Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-6">
-          {classrooms.map((cls) => {
-            const leadTeacher = allAccounts.find(a => a.id === cls.leadTeacherId);
-            const activePlan = lessonPlans.find(p => p.classId === cls.id && p.status === 'approved') || 
-                               lessonPlans.find(p => p.classId === cls.id);
+          {displayedClassrooms.length === 0 ? (
+            <div className="col-span-full text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-2">
+              <School className="w-8 h-8 text-slate-400 mx-auto" />
+              <p className="text-sm font-bold text-slate-700">No classrooms found for the selected campus tab.</p>
+              <p className="text-xs text-slate-500">Switch to "All Campuses" or click "+ Add New Classroom" to create one.</p>
+            </div>
+          ) : (
+            displayedClassrooms.map((cls) => {
+              const leadTeacher = allAccounts.find(a => a.id === cls.leadTeacherId);
+              const activePlan = lessonPlans.find(p => p.classId === cls.id && p.status === 'approved') || 
+                                 lessonPlans.find(p => p.classId === cls.id);
+              const campusInfo = CAMPUS_LIST.find(c => c.id === cls.campusId);
 
-            return (
-              <div
-                key={cls.id}
-                className="bg-slate-50/70 border border-slate-200 rounded-3xl p-5 hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between space-y-4 group relative"
-              >
-                <div className="space-y-3">
-                  {/* Top Badges & Admin Quick Edit */}
-                  <div className="flex items-center justify-between">
-                    <span 
-                      className="px-3 py-1 rounded-xl text-xs font-extrabold text-white shadow-2xs"
-                      style={{ backgroundColor: cls.colorTheme }}
-                    >
-                      {cls.code}
-                    </span>
+              return (
+                <div
+                  key={cls.id}
+                  className="bg-slate-50/70 border border-slate-200 rounded-3xl p-5 hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between space-y-4 group relative"
+                >
+                  <div className="space-y-3">
+                    {/* Top Badges & Campus Label & Admin Quick Edit */}
+                    <div className="flex items-center justify-between flex-wrap gap-1">
+                      <div className="flex items-center gap-1.5">
+                        <span 
+                          className="px-3 py-1 rounded-xl text-xs font-extrabold text-white shadow-2xs"
+                          style={{ backgroundColor: cls.colorTheme }}
+                        >
+                          {cls.code}
+                        </span>
+                        {campusInfo && (
+                          <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300">
+                            {campusInfo.shortName}
+                          </span>
+                        )}
+                      </div>
 
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-bold text-slate-500 mr-1">
                         {cls.enrolledStudents}/{cls.capacity} Children
                       </span>
                       {isAdmin && (
-                        <>
+                        <div className="flex items-center gap-1">
                           <button
                             onClick={(e) => handleOpenEditModal(cls, e)}
                             className="p-1.5 text-slate-500 hover:text-emerald-800 hover:bg-emerald-50 bg-white border border-slate-200 rounded-lg transition-colors shadow-2xs"
@@ -106,7 +126,19 @@ export const ClassroomDirectory: React.FC<ClassroomDirectoryProps> = ({ onSelect
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
-                        </>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`Are you sure you want to permanently delete classroom "${cls.name}"? This unassigns its teacher.`)) {
+                                deleteClassroom(cls.id);
+                              }
+                            }}
+                            className="p-1.5 text-slate-500 hover:text-rose-700 hover:bg-rose-50 bg-white border border-slate-200 rounded-lg transition-colors shadow-2xs"
+                            title="Remove Classroom"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -173,7 +205,7 @@ export const ClassroomDirectory: React.FC<ClassroomDirectoryProps> = ({ onSelect
                 </div>
               </div>
             );
-          })}
+          }))}
         </div>
       </div>
 

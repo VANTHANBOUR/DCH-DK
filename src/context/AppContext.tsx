@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Classroom, LessonPlan, PlanAttachment, SchoolProfile, SystemAuditLog, UserAccount, UserRole, WeeklyComplianceRecord } from '../types';
+import { Classroom, LessonPlan, PlanAttachment, SchoolProfile, SystemAuditLog, UserAccount, UserRole, WeeklyComplianceRecord, SchoolLevel, CampusId, CAMPUS_LIST } from '../types';
 import { INITIAL_ACCOUNTS, INITIAL_AUDIT_LOGS, INITIAL_CLASSROOMS, INITIAL_LESSON_PLANS, INITIAL_SCHOOL_PROFILE } from '../data/mockData';
 import { 
   auth, 
@@ -98,6 +98,12 @@ interface AppContextType {
   addClassroom: (classroomData: Omit<Classroom, 'id'>) => Classroom;
   updateClassroom: (id: string, updates: Partial<Classroom>) => void;
   deleteClassroom: (id: string) => void;
+
+  // Levels / Age Groups
+  levels: SchoolLevel[];
+  addLevel: (levelData: Omit<SchoolLevel, 'id'>) => SchoolLevel;
+  updateLevel: (id: string, updates: Partial<SchoolLevel>) => void;
+  deleteLevel: (id: string) => void;
   
   // Compliance & Metrics
   getWeeklyCompliance: (weekNumber: number) => WeeklyComplianceRecord[];
@@ -110,9 +116,11 @@ interface AppContextType {
   toastMessage: { text: string; type: 'success' | 'info' | 'warning' | 'error' } | null;
   showToast: (text: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
 
-  // Active View / Navigation Tab
+  // Active View / Navigation Tab & Campus Filter
   activeTab: NavigationTab;
   setActiveTab: (tab: NavigationTab) => void;
+  selectedCampusId: CampusId;
+  setSelectedCampusId: (campusId: CampusId) => void;
 
   // School Profile & Branding
   schoolProfile: SchoolProfile;
@@ -135,7 +143,17 @@ const STORAGE_KEYS = {
   CLASSROOMS: 'dch_classrooms_v5',
   AUDIT_LOGS: 'dch_audit_logs_v5',
   SCHOOL_PROFILE: 'dch_school_profile_v5',
+  LEVELS: 'dch_levels_v5',
+  SELECTED_CAMPUS: 'dch_selected_campus_v5',
 };
+
+const DEFAULT_LEVELS: SchoolLevel[] = [
+  { id: 'lvl_toddlers', name: 'Toddlers', ageRange: '1.5 - 2.5 yrs', displayName: 'Toddlers (1.5 - 2.5 yrs)', khmerName: 'ថ្នាក់កូនក្មេង' },
+  { id: 'lvl_nursery', name: 'Nursery', ageRange: '2.5 - 3.5 yrs', displayName: 'Nursery (2.5 - 3.5 yrs)', khmerName: 'ថ្នាក់មត្តេយ្យទាប' },
+  { id: 'lvl_pre_k', name: 'Pre-Kindergarten', ageRange: '3.5 - 4.5 yrs', displayName: 'Pre-Kindergarten (3.5 - 4.5 yrs)', khmerName: 'ថ្នាក់មត្តេយ្យមធ្យម' },
+  { id: 'lvl_k1', name: 'Kindergarten 1', ageRange: '4.5 - 5.5 yrs', displayName: 'Kindergarten 1 (4.5 - 5.5 yrs)', khmerName: 'ថ្នាក់មត្តេយ្យខ្ពស់ ១' },
+  { id: 'lvl_k2', name: 'Kindergarten 2', ageRange: '5.5 - 6.5 yrs', displayName: 'Kindergarten 2 (5.5 - 6.5 yrs)', khmerName: 'ថ្នាក់មត្តេយ្យខ្ពស់ ២' },
+];
 
 // Cross-tab & multi-window instant live synchronization helper
 const broadcastLiveSync = (type: string, data: any) => {
@@ -225,28 +243,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
-  // Authentication State - Enforce sign-in per session
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    try {
-      const sessionActive = sessionStorage.getItem(STORAGE_KEYS.SESSION_ACTIVE);
-      return sessionActive === 'true';
-    } catch {
-      return false;
-    }
-  });
+  // Authentication State - Enforce login on every refresh/access
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
-  // Current User
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
-    try {
-      const sessionActive = sessionStorage.getItem(STORAGE_KEYS.SESSION_ACTIVE) === 'true';
-      if (!sessionActive) return null;
-      const savedId = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
-      const found = allAccounts.find(a => a.id === savedId);
-      return found || allAccounts[0] || null;
-    } catch {
-      return null;
-    }
-  });
+  // Current User - Require login on page load/refresh
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
 
   // Firebase Auth & Connection State
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(true);
@@ -293,8 +294,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+  const [levels, setLevels] = useState<SchoolLevel[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.LEVELS);
+      return saved ? JSON.parse(saved) : DEFAULT_LEVELS;
+    } catch {
+      return DEFAULT_LEVELS;
+    }
+  });
   const [selectedPlan, setSelectedPlan] = useState<LessonPlan | null>(null);
   const [activeTab, setActiveTab] = useState<NavigationTab>('dashboard');
+  const [selectedCampusId, setSelectedCampusIdState] = useState<CampusId>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.SELECTED_CAMPUS);
+      return (saved as CampusId) || 'ALL';
+    } catch {
+      return 'ALL';
+    }
+  });
+
+  const setSelectedCampusId = (campusId: CampusId) => {
+    setSelectedCampusIdState(campusId);
+    try {
+      localStorage.setItem(STORAGE_KEYS.SELECTED_CAMPUS, campusId);
+    } catch {}
+  };
+
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'info' | 'warning' | 'error' } | null>(null);
   
   // Real-time synchronization state
@@ -431,6 +456,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.warn('Firestore classrooms live snapshot notice:', err);
     });
 
+    // 2b. Listen for real-time Levels updates
+    const unsubLevels = onSnapshot(collection(db, 'levels'), (snapshot) => {
+      if (!snapshot.empty) {
+        const remoteLevels: SchoolLevel[] = [];
+        snapshot.forEach(docSnap => {
+          remoteLevels.push({ ...(docSnap.data() as SchoolLevel), id: docSnap.id });
+        });
+        setLevels(remoteLevels);
+      } else {
+        DEFAULT_LEVELS.forEach(async (lvl) => {
+          try {
+            await setDoc(doc(db, 'levels', lvl.id), lvl);
+          } catch {}
+        });
+        setLevels(DEFAULT_LEVELS);
+      }
+    }, (err) => {
+      console.warn('Firestore levels live snapshot notice:', err);
+    });
+
     // 3. Listen for real-time System Audit Logs
     const unsubLogs = onSnapshot(collection(db, 'auditLogs'), (snapshot) => {
       if (!snapshot.empty) {
@@ -457,6 +502,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }, (err) => {
       console.warn('Firestore schoolProfile live snapshot notice:', err);
+    });
+
+    // 4b. Listen for real-time User / Accounts changes from Firestore
+    const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+      if (!snapshot.empty) {
+        const remoteUsers: UserAccount[] = [];
+        snapshot.forEach(docSnap => {
+          remoteUsers.push({ ...(docSnap.data() as UserAccount), id: docSnap.id });
+        });
+        setAllAccounts(prev => {
+          const map = new Map<string, UserAccount>();
+          prev.forEach(u => map.set(u.id, u));
+          remoteUsers.forEach(u => map.set(u.id, u));
+          const merged = Array.from(map.values());
+          
+          if (currentUser) {
+            const freshCurrentUser = merged.find(u => u.id === currentUser.id);
+            if (freshCurrentUser && JSON.stringify(freshCurrentUser) !== JSON.stringify(currentUser)) {
+              setCurrentUser(freshCurrentUser);
+            }
+          }
+          return merged;
+        });
+      }
+    }, (err) => {
+      console.warn('Firestore users live snapshot notice:', err);
     });
 
     // 5. Cross-tab & Multi-window instant broadcast bus for 0ms local response
@@ -544,8 +615,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => {
       unsubPlans();
       unsubClassrooms();
+      unsubLevels();
       unsubLogs();
       unsubProfile();
+      unsubUsers();
       if (bc) bc.close();
       if (typeof window !== 'undefined') {
         window.removeEventListener('storage', handleStorageEvent);
@@ -557,6 +630,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(allAccounts));
   }, [allAccounts]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.LEVELS, JSON.stringify(levels));
+  }, [levels]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.LESSON_PLANS, JSON.stringify(lessonPlans));
@@ -869,6 +946,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedAccountsList = next;
       return next;
     });
+
+    // Automatically synchronize teacher name or avatar update to their submitted lesson plans
+    if (updates.avatar || updates.name) {
+      setLessonPlans(prevPlans => {
+        return prevPlans.map(plan => {
+          if (plan.teacherId === userId) {
+            const planUpdates: Partial<LessonPlan> = {};
+            if (updates.avatar) planUpdates.teacherAvatar = updates.avatar;
+            if (updates.name) planUpdates.teacherName = updates.name;
+            const updatedPlan = { ...plan, ...planUpdates };
+            try {
+              setDoc(doc(db, 'lessonPlans', plan.id), sanitizeForFirestore(updatedPlan), { merge: true }).catch(() => {});
+            } catch {}
+            return updatedPlan;
+          }
+          return plan;
+        });
+      });
+    }
+
     if (updatedAccountsList.length > 0) {
       broadcastLiveSync('ACCOUNTS_UPDATED', updatedAccountsList);
     }
@@ -1229,6 +1326,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(`Classroom "${className}" removed successfully`, 'info');
   };
 
+  const addLevel = (levelData: Omit<SchoolLevel, 'id'>): SchoolLevel => {
+    const newLevel: SchoolLevel = {
+      ...levelData,
+      id: `lvl_${levelData.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now()}`,
+    };
+
+    setLevels(prev => [...prev, newLevel]);
+
+    try {
+      const cleanLevel = sanitizeForFirestore(newLevel);
+      setDoc(doc(db, 'levels', newLevel.id), cleanLevel, { merge: true }).catch(() => {});
+    } catch {}
+
+    broadcastLiveSync('LEVEL_ADDED', newLevel);
+    addAuditLog('UPDATE_SCHOOL_PROFILE', `Added customized learning level "${newLevel.displayName}"`, newLevel.id);
+    showToast(`Level "${newLevel.name}" successfully created!`, 'success');
+    return newLevel;
+  };
+
+  const updateLevel = (id: string, updates: Partial<SchoolLevel>) => {
+    let updatedLevelObj: SchoolLevel | null = null;
+    setLevels(prev => prev.map(l => {
+      if (l.id === id) {
+        const updated = { ...l, ...updates };
+        updatedLevelObj = updated;
+        return updated;
+      }
+      return l;
+    }));
+
+    try {
+      if (updatedLevelObj) {
+        const cleanLevel = sanitizeForFirestore(updatedLevelObj);
+        setDoc(doc(db, 'levels', id), cleanLevel, { merge: true }).catch(() => {});
+      }
+    } catch {}
+
+    if (updatedLevelObj) {
+      broadcastLiveSync('LEVEL_UPDATED', updatedLevelObj);
+      addAuditLog('UPDATE_SCHOOL_PROFILE', `Updated learning level "${(updatedLevelObj as SchoolLevel).displayName}"`, id);
+      showToast(`Level "${(updatedLevelObj as SchoolLevel).name}" updated successfully`, 'success');
+    }
+  };
+
+  const deleteLevel = (id: string) => {
+    const target = levels.find(l => l.id === id);
+    const levelName = target?.displayName || id;
+
+    setLevels(prev => prev.filter(l => l.id !== id));
+
+    try {
+      deleteDoc(doc(db, 'levels', id)).catch(() => {});
+    } catch {}
+
+    broadcastLiveSync('LEVEL_DELETED', id);
+    addAuditLog('UPDATE_SCHOOL_PROFILE', `Deleted learning level "${levelName}"`, id);
+    showToast(`Level "${levelName}" deleted successfully`, 'info');
+  };
+
   const getWeeklyCompliance = (weekNumber: number): WeeklyComplianceRecord[] => {
     const teachers = allAccounts.filter(a => a.role === 'teacher');
     return teachers.map(teacher => {
@@ -1422,6 +1578,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addClassroom,
         updateClassroom,
         deleteClassroom,
+        levels,
+        addLevel,
+        updateLevel,
+        deleteLevel,
         getWeeklyCompliance,
         auditLogs,
         addAuditLog,
@@ -1429,6 +1589,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         showToast,
         activeTab,
         setActiveTab,
+        selectedCampusId,
+        setSelectedCampusId,
         schoolProfile,
         updateSchoolProfile,
         uploadCustomLogo,

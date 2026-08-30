@@ -9,6 +9,7 @@ import {
   OfficialSessionPlan 
 } from '../types';
 import { OfficialTemplateView } from './OfficialTemplateView';
+import { DCHShield } from './BrandLogo';
 import { 
   X, 
   UploadCloud, 
@@ -494,7 +495,7 @@ export const LessonPlanEditor: React.FC<LessonPlanEditorProps> = ({
       themeDescription: themeDescription.trim(),
       domains,
       learningObjectives,
-      circleTimeActivities: warmUpCircleTime || circleTimeActivities,
+      circleTimeActivities: warmUpCircleTime,
       learningCenters,
       outdoorSensoryPlay,
       trilingualFocus: {
@@ -596,28 +597,31 @@ export const LessonPlanEditor: React.FC<LessonPlanEditorProps> = ({
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl shadow-2xl border border-emerald-100 w-full max-w-5xl max-h-[94vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
-        {/* Modal Header */}
-        <div className="px-6 py-4 bg-gradient-to-r from-emerald-900 via-[#006838] to-emerald-950 text-white flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-white/10 rounded-2xl border border-white/20">
-              <BookOpen className="w-5 h-5 text-emerald-200" />
-            </div>
-            <div>
-              <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
-                {initialPlan ? 'Edit Lesson Plan' : 'Create Early Childhood Lesson Plan'}
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-100 border border-emerald-400/40">
-                  DCH Format
+        {/* Modal Header: Custom DCH Institutional Header */}
+        <div className="px-6 py-3.5 bg-gradient-to-r from-emerald-950 via-[#006838] to-emerald-900 text-white flex items-center justify-between shrink-0 border-b border-white/10 shadow-md">
+          <div className="flex items-center gap-3.5">
+            <DCHShield size={48} className="brightness-110 drop-shadow-[0_2px_8px_rgba(0,0,0,0.2)]" />
+            <div className="leading-tight text-left">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-amber-300 font-['Battambang',sans-serif] tracking-normal leading-none">
+                  សាលាមត្តេយ្យ ដេវី
                 </span>
+                <span className="text-[9px] font-extrabold uppercase tracking-widest px-1.5 py-0.2 rounded bg-amber-500 text-amber-950">
+                  Official Template
+                </span>
+              </div>
+              <h2 className="text-base sm:text-lg font-black tracking-wide uppercase font-['Outfit',sans-serif] text-white leading-tight mt-0.5">
+                Dewey Childcare House — Lesson Plan Editor
               </h2>
-              <p className="text-xs text-emerald-200/90 font-medium">
-                Dewey Childcare House · Institutional 4-Part Structure (Warm up · 1st Session · 2nd Session · Closing)
+              <p className="text-[10px] text-emerald-200/90 font-medium">
+                Early Childhood Division · Warm up, 1st Session, 2nd Session, and Dismissal Blocks
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-emerald-200 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-2 rounded-xl text-emerald-200 hover:text-white hover:bg-white/10 transition-colors shrink-0"
           >
             <X className="w-5 h-5" />
           </button>

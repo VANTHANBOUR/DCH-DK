@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { LessonPlan } from '../types';
-import { LessonPlanTemplateModal } from './LessonPlanTemplateModal';
+import { UserProfileModal } from './UserProfileModal';
 import { 
   BookOpen, 
   Plus, 
@@ -19,7 +19,9 @@ import {
   AlertCircle,
   HelpCircle,
   School,
-  Table
+  Table,
+  Camera,
+  User
 } from 'lucide-react';
 
 interface TeacherDashboardProps {
@@ -35,7 +37,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 }) => {
   const { currentUser, userLessonPlans, submitLessonPlan, classrooms, showToast } = useApp();
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const myClass = classrooms.find(c => c.id === currentUser.assignedClassId) || classrooms[0];
 
@@ -98,11 +100,23 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-start sm:items-center gap-4 sm:gap-5">
-            <img
-              src={currentUser.avatar}
-              alt={currentUser.name}
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover ring-4 ring-white/30 shadow-md shrink-0"
-            />
+            <div 
+              className="relative group cursor-pointer shrink-0" 
+              onClick={() => setIsProfileModalOpen(true)}
+              title="Click to update profile picture & details"
+            >
+              <img
+                src={currentUser.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80'}
+                alt={currentUser.name}
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover ring-4 ring-white/30 shadow-md transition-transform group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <Camera className="w-6 h-6 text-white" />
+              </div>
+              <div className="absolute -bottom-1 -right-1 p-1 bg-amber-400 text-amber-950 rounded-lg shadow-xs hover:bg-amber-300">
+                <Camera className="w-3.5 h-3.5" />
+              </div>
+            </div>
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-400/90 text-amber-950">
@@ -125,21 +139,16 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-xs border border-white/20 text-white text-xs font-semibold">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span>Live Synced with Academic Office</span>
-            </div>
             <button
-              onClick={() => setIsTemplateModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-3 bg-white/15 hover:bg-white/25 text-white font-bold text-sm rounded-2xl border border-white/30 backdrop-blur-xs transition-all active:scale-95 shadow-2xs"
-              title="Preview & print official blank or sample lesson plan format"
+              onClick={() => setIsProfileModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white/15 hover:bg-white/25 text-white font-bold text-xs rounded-2xl border border-white/25 backdrop-blur-xs transition-all active:scale-95"
             >
-              <Table className="w-4 h-4 text-emerald-200" />
-              <span>Official Format Template</span>
+              <User className="w-4 h-4 text-amber-300" />
+              <span>Update Profile & Photo</span>
             </button>
             <button
               onClick={onOpenNewPlan}
-              className="flex items-center gap-2 px-5 py-3 bg-amber-500 hover:bg-amber-400 text-amber-950 font-extrabold text-sm rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95"
+              className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-amber-950 font-extrabold text-xs sm:text-sm rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95"
             >
               <Plus className="w-5 h-5 stroke-[2.5]" />
               <span>Create / Upload Lesson Plan</span>
@@ -371,54 +380,33 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         )}
       </div>
 
-      {/* Early Childhood Quick Toolkit & Guidelines */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-5 bg-gradient-to-br from-emerald-50 to-white rounded-3xl border border-emerald-200/80 space-y-2">
-          <div className="p-2.5 bg-emerald-600 text-white rounded-xl w-fit">
-            <Sparkles className="w-5 h-5 text-amber-300" />
+      {/* Staff Profile Quick Actions & Classroom Card */}
+      <div className="bg-white rounded-3xl border border-slate-200/80 p-5 sm:p-6 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#007A43] flex items-center justify-center shrink-0 border border-emerald-200/80">
+            <User className="w-6 h-6" />
           </div>
-          <h3 className="text-sm font-extrabold text-emerald-950">
-            DCH Trilingual Framework
-          </h3>
-          <p className="text-xs text-slate-600 leading-relaxed">
-            Every weekly plan must integrate English, Khmer, and Mandarin morning songs and sensory discovery vocabulary.
-          </p>
-        </div>
-
-        <div className="p-5 bg-gradient-to-br from-amber-50 to-white rounded-3xl border border-amber-200/80 space-y-2">
-          <div className="p-2.5 bg-amber-500 text-white rounded-xl w-fit">
-            <Calendar className="w-5 h-5" />
+          <div>
+            <h3 className="text-sm font-extrabold text-slate-900">
+              Personalized Educator Account Profile
+            </h3>
+            <p className="text-xs text-slate-500">
+              Keep your profile portrait, contact number, and Khmer name updated for official printed lesson plans.
+            </p>
           </div>
-          <h3 className="text-sm font-extrabold text-amber-950">
-            Submission Deadline Policy
-          </h3>
-          <p className="text-xs text-slate-600 leading-relaxed">
-            All weekly lesson plans must be submitted by Friday 5:00 PM prior to the teaching week for Academic Director review.
-          </p>
         </div>
-
-        <div className="p-5 bg-gradient-to-br from-slate-50 to-white rounded-3xl border border-slate-200/80 space-y-2">
-          <div className="p-2.5 bg-slate-800 text-white rounded-xl w-fit">
-            <Layers className="w-5 h-5 text-emerald-400" />
-          </div>
-          <h3 className="text-sm font-extrabold text-slate-900">
-            Play-Based Learning Stations
-          </h3>
-          <p className="text-xs text-slate-600 leading-relaxed">
-            Include at least 3 distinct centers (Sensory Bin, Creative Arts, Phonics/Math Nook) with child-safe non-toxic materials.
-          </p>
-        </div>
+        <button
+          onClick={() => setIsProfileModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#007A43] hover:bg-[#006838] text-white text-xs font-bold rounded-2xl shadow-2xs transition-all active:scale-95 shrink-0"
+        >
+          <Camera className="w-4 h-4 text-amber-300" />
+          <span>Update Photo & Profile Details</span>
+        </button>
       </div>
 
-      {/* Official Template Format Modal */}
-      {isTemplateModalOpen && (
-        <LessonPlanTemplateModal
-          onClose={() => setIsTemplateModalOpen(false)}
-          onUseTemplate={() => {
-            setIsTemplateModalOpen(false);
-            onOpenNewPlan();
-          }}
-        />
+      {/* User Profile Settings Modal */}
+      {isProfileModalOpen && (
+        <UserProfileModal onClose={() => setIsProfileModalOpen(false)} />
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 import React from 'react';
 import { LessonPlan } from '../types';
 import { useApp } from '../context/AppContext';
+import { SchoolLogoIcon, DCHShield } from './BrandLogo';
 
 interface OfficialTemplateViewProps {
   plan?: LessonPlan | null;
@@ -79,17 +80,33 @@ export const OfficialTemplateView: React.FC<OfficialTemplateViewProps> = ({
       className={`bg-white text-black font-sans max-w-[800px] mx-auto p-6 sm:p-10 border border-slate-300 shadow-sm print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none ${className}`}
       style={{ minHeight: '1050px' }}
     >
-      {/* 1. Header: School Title in Emerald Green */}
-      <div className="text-center mb-6">
-        <h1 
-          className="text-2xl sm:text-3xl font-extrabold tracking-tight uppercase"
-          style={{ color: '#006838', fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}
-        >
-          Dewey Childcare House
-        </h1>
-        <h2 className="text-xl sm:text-2xl font-bold underline underline-offset-4 mt-1.5 tracking-wide text-black">
-          Lesson Plan
-        </h2>
+      {/* 1. Header: School Logo & Title (Official DCH Letterhead Format) */}
+      <div className="flex flex-col sm:flex-row items-center justify-between border-b-2 border-[#006838] pb-4 mb-6 gap-4">
+        <div className="flex items-center gap-4">
+          <SchoolLogoIcon size={64} className="shrink-0" />
+          <div className="text-left">
+            <h1 className="text-xs font-bold tracking-normal text-[#006838] font-['Battambang',sans-serif] leading-none mb-1">
+              សាលាមត្តេយ្យ ដេវី
+            </h1>
+            <h2 
+              className="text-xl sm:text-2xl font-extrabold tracking-tight uppercase leading-tight text-[#006838]"
+              style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}
+            >
+              Dewey Childcare House
+            </h2>
+            <p className="text-[11px] font-semibold tracking-wider uppercase text-slate-500 font-['Plus_Jakarta_Sans',sans-serif]">
+              Early Childhood Education Portal
+            </p>
+          </div>
+        </div>
+        <div className="text-center sm:text-right flex flex-col justify-center shrink-0">
+          <h3 className="text-lg sm:text-xl font-black uppercase tracking-widest text-[#006838]">
+            Lesson Plan
+          </h3>
+          <span className="text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#006838] border border-emerald-200/60 font-bold mt-1">
+            Official DCH Format
+          </span>
+        </div>
       </div>
 
       {/* 2. Metadata Grid (Date, Week, Class, Time) */}

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { LessonPlan, UserAccount, UserRole } from '../types';
+import { LessonPlan, UserAccount, UserRole, Classroom, SchoolLevel } from '../types';
 import { StaffManagementModal } from './StaffManagementModal';
 import { ClassroomModal } from './ClassroomModal';
-import { LessonPlanTemplateModal } from './LessonPlanTemplateModal';
+import { ClassroomsAndLevelsTab } from './ClassroomsAndLevelsTab';
 import { 
   ShieldCheck, 
   BookOpen, 
@@ -48,13 +48,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     lessonPlans, 
     allAccounts, 
     classrooms, 
+    addClassroom,
+    updateClassroom,
+    deleteClassroom,
     batchApprovePlans, 
     getWeeklyCompliance, 
     showToast,
     updateAccount,
     deleteAccount,
     openSignUpModal,
-    openProfileModal
+    openProfileModal,
+    levels,
+    addLevel,
+    updateLevel,
+    deleteLevel,
+    selectedCampusId
   } = useApp();
 
   // Filters
@@ -66,19 +74,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   
   // Batch selection
   const [selectedPlanIds, setSelectedPlanIds] = useState<string[]>([]);
-  const [activeAdminSubTab, setActiveAdminSubTab] = useState<'submissions' | 'compliance_matrix' | 'staff'>('submissions');
+  const [activeAdminSubTab, setActiveAdminSubTab] = useState<'submissions' | 'compliance_matrix' | 'staff' | 'classrooms_levels'>('submissions');
   const [editingStaffUser, setEditingStaffUser] = useState<UserAccount | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserAccount | null>(null);
   const [staffRoleFilter, setStaffRoleFilter] = useState<string>('all');
   const [staffSearchQuery, setStaffSearchQuery] = useState<string>('');
   const [isClassroomModalOpen, setIsClassroomModalOpen] = useState(false);
-  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [selectedClassroomToEdit, setSelectedClassroomToEdit] = useState<Classroom | null>(null);
 
-  const teachers = allAccounts.filter(a => a.role === 'teacher');
+  const teachers = allAccounts.filter(a => {
+    if (a.role !== 'teacher') return false;
+    if (!selectedCampusId || selectedCampusId === 'ALL') return true;
+    return a.campusId === selectedCampusId;
+  });
+
+  const campusClassrooms = classrooms.filter(c => {
+    if (!selectedCampusId || selectedCampusId === 'ALL') return true;
+    return c.campusId === selectedCampusId;
+  });
+
   const weeklyCompliance = getWeeklyCompliance(selectedWeek);
 
   // Filtered master submissions list
   const filteredPlans = lessonPlans.filter((plan) => {
+    if (selectedCampusId && selectedCampusId !== 'ALL') {
+      const cls = classrooms.find(c => c.id === plan.classId);
+      if (plan.campusId && plan.campusId !== selectedCampusId) return false;
+      if (!plan.campusId && cls && cls.campusId !== selectedCampusId) return false;
+    }
     if (selectedTeacherId !== 'all' && plan.teacherId !== selectedTeacherId) return false;
     if (selectedClassId !== 'all' && plan.classId !== selectedClassId) return false;
     if (selectedStatus !== 'all' && plan.status !== selectedStatus) return false;
@@ -92,11 +115,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     return true;
   });
 
-  // KPIs
-  const totalSubmissions = lessonPlans.length;
-  const pendingReview = lessonPlans.filter(p => p.status === 'submitted' || p.status === 'under_review').length;
-  const approvedCount = lessonPlans.filter(p => p.status === 'approved').length;
-  const revisionsCount = lessonPlans.filter(p => p.status === 'revision_requested').length;
+  // KPIs based on campus filtering
+  const campusPlans = lessonPlans.filter(plan => {
+    if (!selectedCampusId || selectedCampusId === 'ALL') return true;
+    const cls = classrooms.find(c => c.id === plan.classId);
+    return plan.campusId === selectedCampusId || (cls && cls.campusId === selectedCampusId);
+  });
+  const totalSubmissions = campusPlans.length;
+  const pendingReview = campusPlans.filter(p => p.status === 'submitted' || p.status === 'under_review').length;
+  const approvedCount = campusPlans.filter(p => p.status === 'approved').length;
+  const revisionsCount = campusPlans.filter(p => p.status === 'revision_requested').length;
   const complianceRate = Math.round((approvedCount / (totalSubmissions || 1)) * 100);
 
   const toggleSelectPlan = (id: string) => {
@@ -319,6 +347,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           >
             <Users className="w-4 h-4" />
             <span>Staff Positions & Roles ({allAccounts.length})</span>
+          </button>
+        )}
+
+        {currentUser?.role === 'admin' && (
+          <button
+            onClick={() => setActiveAdminSubTab('classrooms_levels')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+              activeAdminSubTab === 'classrooms_levels'
+                ? 'bg-emerald-800 text-white shadow-2xs'
+                : 'text-emerald-800 bg-emerald-50 hover:bg-emerald-100'
+            }`}
+          >
+            <School className="w-4 h-4 text-[#D97706]" />
+            <span>Classrooms & Levels ({classrooms.length} Cls / {levels?.length || 0} Lvl)</span>
           </button>
         )}
       </div>
@@ -618,6 +660,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </table>
           </div>
         </div>
+      ) : activeAdminSubTab === 'classrooms_levels' ? (
+        <ClassroomsAndLevelsTab
+          classrooms={classrooms}
+          levels={levels}
+          allAccounts={allAccounts}
+          addClassroom={addClassroom}
+          updateClassroom={updateClassroom}
+          deleteClassroom={deleteClassroom}
+          addLevel={addLevel}
+          updateLevel={updateLevel}
+          deleteLevel={deleteLevel}
+          onEditClassroom={(cls) => {
+            setSelectedClassroomToEdit(cls);
+            setIsClassroomModalOpen(true);
+          }}
+          onAddClassroom={() => {
+            setSelectedClassroomToEdit(null);
+            setIsClassroomModalOpen(true);
+          }}
+        />
       ) : (
         /* Master Submissions List & Filters */
         <div className="bg-white rounded-3xl border border-slate-200/80 shadow-2xs overflow-hidden space-y-4">
@@ -877,7 +939,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* Add Classroom Modal */}
       {isClassroomModalOpen && (
         <ClassroomModal
-          onClose={() => setIsClassroomModalOpen(false)}
+          classroomToEdit={selectedClassroomToEdit}
+          onClose={() => {
+            setIsClassroomModalOpen(false);
+            setSelectedClassroomToEdit(null);
+          }}
         />
       )}
     </div>

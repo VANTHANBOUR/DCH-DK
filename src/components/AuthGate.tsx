@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { BrandLogo, DCHShield } from './BrandLogo';
-import { UserRole } from '../types';
+import { BrandLogo, DIShield } from './BrandLogo';
+import { UserRole, CampusId, CAMPUS_LIST } from '../types';
+import { CampusTabsBar } from './CampusTabsBar';
 import { 
   Mail, 
   Lock, 
@@ -20,7 +21,8 @@ import {
   BookOpen,
   Calendar,
   Layers,
-  KeyRound
+  KeyRound,
+  MapPin
 } from 'lucide-react';
 
 export const AuthGate: React.FC = () => {
@@ -32,7 +34,9 @@ export const AuthGate: React.FC = () => {
     classrooms, 
     showToast,
     firebaseConfigInfo,
-    isFirebaseConnected
+    isFirebaseConnected,
+    selectedCampusId,
+    setSelectedCampusId
   } = useApp();
 
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -50,6 +54,8 @@ export const AuthGate: React.FC = () => {
   const [role, setRole] = useState<UserRole>('teacher');
   const [title, setTitle] = useState('');
   const [assignedClassId, setAssignedClassId] = useState('cls_butterflies');
+
+  const activeCampus = CAMPUS_LIST.find(c => c.id === selectedCampusId) || CAMPUS_LIST[0];
 
   const handleSignInSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,6 +88,7 @@ export const AuthGate: React.FC = () => {
         email: email.trim(),
         password: password || 'password123',
         role,
+        campusId: selectedCampusId !== 'ALL' ? selectedCampusId : 'DCH_SYW',
         title: title.trim() || (role === 'admin' ? 'School Administrator' : role === 'academic_officer' ? 'Academic Review Officer' : 'Early Childhood Lead Educator'),
         assignedClassId: role === 'teacher' ? assignedClassId : undefined,
         assignedClassName: role === 'teacher' ? selectedClass?.name : undefined,
@@ -115,39 +122,55 @@ export const AuthGate: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-950 text-slate-100 flex flex-col justify-between font-['Plus_Jakarta_Sans',sans-serif] selection:bg-[#007A43] selection:text-white">
       {/* Top Brand Banner */}
-      <header className="border-b border-white/10 bg-black/20 backdrop-blur-md sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <DCHShield size={40} />
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-white text-base tracking-tight font-['Outfit']">
-                  Dewey Childcare House
-                </span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  DCH Portal
-                </span>
-              </div>
-              <p className="text-xs text-emerald-200/80 font-['Battambang']">
-                សាលាមត្តេយ្យអន្តរជាតិ ឌូវី ឆាល់ឃែរ៍ ហោស៍ · International Trilingual Kindergarten
-              </p>
+      <header className="border-b border-white/10 bg-black/40 backdrop-blur-md sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <DIShield size={44} />
+            <div className="flex flex-col">
+              <span className="text-base sm:text-lg font-bold text-emerald-400 font-['Battambang',sans-serif] tracking-tight leading-tight">
+                ការិយាល័យកណ្តាលអប់រំកុមារតូច ឌូអី
+              </span>
+              <span className="text-xs sm:text-sm font-black text-white tracking-wide uppercase font-['Outfit',sans-serif] leading-tight">
+                DEWEY INTERNATIONAL EARLY CHILDHOOD EDUCATION
+              </span>
             </div>
           </div>
 
           {/* Firebase Connection Status */}
-          <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs">
+          <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl bg-white/10 border border-white/15 text-xs">
             <div className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </div>
-            <span className="text-emerald-300 font-bold">Firebase Auth & Firestore Online</span>
-            <span className="text-slate-400 font-mono text-[11px] hidden sm:inline">({firebaseConfigInfo.projectId})</span>
+            <span className="text-emerald-300 font-bold">Central Auth & Firestore Online</span>
           </div>
         </div>
       </header>
 
       {/* Main Authentication Card */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8 sm:py-12 flex flex-col items-center justify-center">
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6 sm:py-10 flex flex-col items-center justify-center space-y-6">
+        
+        {/* Campus Selection Tabs Header */}
+        <div className="w-full bg-white/5 backdrop-blur-md rounded-3xl p-4 sm:p-5 border border-white/10 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-white">
+              <Building2 className="w-5 h-5 text-amber-400" />
+              <h3 className="text-sm font-black uppercase tracking-wider font-['Outfit']">
+                Select Destination Campus Tab After Login:
+              </h3>
+            </div>
+            <span className="text-xs text-emerald-300/80 font-medium">
+              Click campus tab to open portal gate
+            </span>
+          </div>
+
+          <CampusTabsBar 
+            selectedCampusId={selectedCampusId}
+            onSelectCampus={setSelectedCampusId}
+            variant="cards"
+          />
+        </div>
+
         <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
           
           {/* Left Column: School Presentation & Features */}
@@ -159,10 +182,14 @@ export const AuthGate: React.FC = () => {
 
             <div className="space-y-2">
               <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight font-['Outfit'] leading-tight">
-                Early Childhood Management & Lesson Planning
+                {activeCampus.id === 'ALL' 
+                  ? 'Dewey International Early Childhood Portal' 
+                  : `${activeCampus.shortName} Portal Gate`}
               </h1>
               <p className="text-sm text-slate-300 leading-relaxed">
-                Sign in to your authorized Dewey Childcare House account to create, manage trilingual lesson plans, review curriculum alignment, and monitor classroom schedules.
+                {activeCampus.id === 'ALL'
+                  ? 'Sign in to access curriculum management, trilingual lesson planning, and academic quality moderation across all Dewey International campuses.'
+                  : `Sign in to access ${activeCampus.nameEnglish} (${activeCampus.nameKhmer}) in ${activeCampus.location}.`}
               </p>
             </div>
 
@@ -200,20 +227,38 @@ export const AuthGate: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Column: Sign In / Sign Up Form Box */}
+          {/* Right Column: Respective Campus Portal Gate Sign In / Sign Up Form Box */}
           <div className="lg:col-span-7 w-full">
             <div className="bg-white text-slate-900 rounded-3xl shadow-2xl border border-emerald-100/50 overflow-hidden">
               
-              {/* Header inside form */}
-              <div className="bg-gradient-to-r from-slate-900 via-emerald-950 to-[#006838] p-5 sm:p-6 text-white">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <DCHShield size={32} />
-                    <span className="font-bold text-sm text-emerald-100">DCH Portal Gate</span>
+              {/* Respective Campus Portal Banner Header */}
+              <div className="bg-gradient-to-r from-slate-900 via-emerald-950 to-[#006838] p-5 sm:p-6 text-white space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <DIShield size={36} />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-base text-white font-['Outfit']">
+                          {activeCampus.shortName} Portal Gate
+                        </span>
+                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-400 text-slate-950">
+                          {activeCampus.brand}
+                        </span>
+                      </div>
+                      <p className="text-xs text-emerald-200 font-['Battambang'] truncate max-w-xs">
+                        {activeCampus.nameKhmer}
+                      </p>
+                    </div>
                   </div>
-                  <span className="text-[11px] font-semibold text-emerald-300/90">
-                    Academic Year 2025–2026
-                  </span>
+                  <div className="text-right hidden sm:block">
+                    <span className="text-[10px] font-semibold text-emerald-300 block">
+                      Academic Year 2025–2026
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-300 flex items-center justify-end gap-1">
+                      <MapPin className="w-3 h-3 text-amber-400" />
+                      {activeCampus.location}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Tab switcher: Sign In vs Sign Up */}
@@ -227,7 +272,7 @@ export const AuthGate: React.FC = () => {
                         : 'text-white/80 hover:text-white hover:bg-white/10'
                     }`}
                   >
-                    Sign In to Portal
+                    Sign In to {activeCampus.shortName}
                   </button>
                   <button
                     type="button"
@@ -278,7 +323,7 @@ export const AuthGate: React.FC = () => {
                   <div className="relative flex items-center justify-center my-2">
                     <div className="border-t border-slate-200 w-full" />
                     <span className="bg-white px-3 text-[10px] uppercase tracking-wider text-slate-400 font-bold absolute">
-                      Or with School Email
+                      Or with Institutional Email
                     </span>
                   </div>
                 </div>
@@ -288,9 +333,9 @@ export const AuthGate: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-black uppercase tracking-wider text-emerald-950 flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                      <span>Instant 1-Click Demo Profiles:</span>
+                      <span>Instant Demo Credentials ({activeCampus.shortName}):</span>
                     </span>
-                    <span className="text-[10px] text-emerald-700 font-semibold">Select to test roles</span>
+                    <span className="text-[10px] text-emerald-700 font-semibold">Select to test</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -358,7 +403,7 @@ export const AuthGate: React.FC = () => {
                   <form onSubmit={handleSignInSubmit} className="space-y-3.5">
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-slate-700 block">
-                        Institutional School Email
+                        Institutional Email ({activeCampus.shortName})
                       </label>
                       <div className="relative">
                         <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -367,7 +412,7 @@ export const AuthGate: React.FC = () => {
                           required
                           value={signInEmail}
                           onChange={(e) => setSignInEmail(e.target.value)}
-                          placeholder="e.g. vanthanbour@diu.edu.kh or teacher.sreymom@deweychildcare.edu.kh"
+                          placeholder="e.g. vanthanbour@diu.edu.kh or teacher@deweychildcare.edu.kh"
                           className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:outline-emerald-600"
                         />
                       </div>
@@ -403,11 +448,11 @@ export const AuthGate: React.FC = () => {
                       {isLoading ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Verifying Credentials & Connecting...</span>
+                          <span>Connecting to {activeCampus.shortName} Portal...</span>
                         </>
                       ) : (
                         <>
-                          <span>Sign In to Access Portal</span>
+                          <span>Sign In to {activeCampus.shortName} Portal</span>
                           <ArrowRight className="w-4 h-4" />
                         </>
                       )}
@@ -416,6 +461,18 @@ export const AuthGate: React.FC = () => {
                 ) : (
                   /* SIGN UP FORM */
                   <form onSubmit={handleSignUpSubmit} className="space-y-3.5">
+                    
+                    {/* Active Destination Campus Badge */}
+                    <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-950 font-bold">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-emerald-700" />
+                        <span>Target Destination Campus:</span>
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-md bg-emerald-700 text-white font-extrabold">
+                        {activeCampus.shortName}
+                      </span>
+                    </div>
+
                     {/* Role Selection */}
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-slate-700 block">
@@ -499,7 +556,7 @@ export const AuthGate: React.FC = () => {
                           required
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          placeholder="name@deweychildcare.edu.kh"
+                          placeholder="name@diu.edu.kh"
                           className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:outline-emerald-600"
                         />
                       </div>
@@ -522,18 +579,20 @@ export const AuthGate: React.FC = () => {
                     {role === 'teacher' && (
                       <div className="space-y-1 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
                         <label className="text-xs font-bold text-slate-700 block">
-                          Assigned Kindergarten Level & Room
+                          Assigned Level & Room ({activeCampus.shortName})
                         </label>
                         <select
                           value={assignedClassId}
                           onChange={(e) => setAssignedClassId(e.target.value)}
                           className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-800"
                         >
-                          {classrooms.map(cls => (
-                            <option key={cls.id} value={cls.id}>
-                              {cls.name} ({cls.ageGroup}) - {cls.room}
-                            </option>
-                          ))}
+                          {classrooms
+                            .filter(cls => selectedCampusId === 'ALL' || !cls.campusId || cls.campusId === selectedCampusId)
+                            .map(cls => (
+                              <option key={cls.id} value={cls.id}>
+                                {cls.name} ({cls.ageGroup}) - {cls.room}
+                              </option>
+                            ))}
                         </select>
                       </div>
                     )}
@@ -546,11 +605,11 @@ export const AuthGate: React.FC = () => {
                       {isLoading ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Creating Firebase Account...</span>
+                          <span>Registering Account for {activeCampus.shortName}...</span>
                         </>
                       ) : (
                         <>
-                          <span>Register & Access Portal</span>
+                          <span>Register & Access {activeCampus.shortName} Portal</span>
                           <CheckCircle2 className="w-4 h-4 text-amber-300" />
                         </>
                       )}
@@ -567,7 +626,7 @@ export const AuthGate: React.FC = () => {
       <footer className="border-t border-white/10 bg-black/30 backdrop-blur-sm py-4 text-center text-xs text-slate-400">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-xs">
-            © 2026 Dewey Childcare House (DCH). Trilingual Early Childhood Education. All rights reserved.
+            © 2026 Dewey International (DI) Education. Trilingual Early Childhood Education. All rights reserved.
           </p>
           <div className="flex items-center gap-3 text-xs">
             <span className="text-emerald-300 font-bold">English · ភាសាខ្មែរ · 中文</span>

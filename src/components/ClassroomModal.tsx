@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Classroom, EarlyChildhoodAgeGroup } from '../types';
+import { Classroom, EarlyChildhoodAgeGroup, CampusId, CAMPUS_LIST } from '../types';
 import { 
   X, 
   School, 
@@ -50,12 +50,27 @@ const NAME_PRESETS = [
 ];
 
 export const ClassroomModal: React.FC<ClassroomModalProps> = ({ classroomToEdit, onClose }) => {
-  const { allAccounts, addClassroom, updateClassroom, deleteClassroom, showToast } = useApp();
+  const { 
+    allAccounts, 
+    addClassroom, 
+    updateClassroom, 
+    deleteClassroom, 
+    showToast, 
+    levels,
+    addLevel,
+    updateLevel,
+    signUp,
+    updateAccount,
+    selectedCampusId
+  } = useApp();
 
   const isEditing = !!classroomToEdit;
 
   const teachers = allAccounts.filter(a => a.role === 'teacher');
 
+  const [campusId, setCampusId] = useState<CampusId>(
+    classroomToEdit?.campusId || (selectedCampusId !== 'ALL' ? selectedCampusId : 'DCH_SYW')
+  );
   const [name, setName] = useState(classroomToEdit?.name || '');
   const [khmerName, setKhmerName] = useState(classroomToEdit?.khmerName || '');
   const [code, setCode] = useState(classroomToEdit?.code || 'PRE-K B');
@@ -69,6 +84,23 @@ export const ClassroomModal: React.FC<ClassroomModalProps> = ({ classroomToEdit,
   const [currentTheme, setCurrentTheme] = useState(classroomToEdit?.currentTheme || 'Our Trilingual Community & Helping Hands');
 
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+
+  // Inline Level state
+  const [isLevelFormOpen, setIsLevelFormOpen] = useState(false);
+  const [levelFormMode, setLevelFormMode] = useState<'add' | 'edit'>('add');
+  const [inlineLevelName, setInlineLevelName] = useState('');
+  const [inlineLevelAgeRange, setInlineLevelAgeRange] = useState('');
+  const [inlineLevelKhmer, setInlineLevelKhmer] = useState('');
+  const [inlineLevelDesc, setInlineLevelDesc] = useState('');
+
+  // Inline Teacher state
+  const [isTeacherFormOpen, setIsTeacherFormOpen] = useState(false);
+  const [teacherFormMode, setTeacherFormMode] = useState<'add' | 'edit'>('add');
+  const [inlineTeacherName, setInlineTeacherName] = useState('');
+  const [inlineTeacherKhmer, setInlineTeacherKhmer] = useState('');
+  const [inlineTeacherEmail, setInlineTeacherEmail] = useState('');
+  const [inlineTeacherTitle, setInlineTeacherTitle] = useState('');
+  const [inlineTeacherPhone, setInlineTeacherPhone] = useState('');
 
   useEffect(() => {
     if (classroomToEdit) {
@@ -85,6 +117,132 @@ export const ClassroomModal: React.FC<ClassroomModalProps> = ({ classroomToEdit,
       setCurrentTheme(classroomToEdit.currentTheme);
     }
   }, [classroomToEdit]);
+
+  // Set default teacher if not assigned and teachers load
+  useEffect(() => {
+    if (!leadTeacherId && teachers.length > 0) {
+      setLeadTeacherId(teachers[0].id);
+    }
+  }, [teachers, leadTeacherId]);
+
+  const handleInlineAddLevel = () => {
+    setInlineLevelName('');
+    setInlineLevelAgeRange('');
+    setInlineLevelKhmer('');
+    setInlineLevelDesc('');
+    setLevelFormMode('add');
+    setIsLevelFormOpen(true);
+    setIsTeacherFormOpen(false); // Close teacher form to save screen real-estate
+  };
+
+  const handleInlineEditLevel = () => {
+    const currentLvl = levels.find(l => l.displayName === ageGroup);
+    if (!currentLvl) {
+      showToast('Please select a valid level to edit', 'warning');
+      return;
+    }
+    setInlineLevelName(currentLvl.name);
+    setInlineLevelAgeRange(currentLvl.ageRange);
+    setInlineLevelKhmer(currentLvl.khmerName || '');
+    setInlineLevelDesc(currentLvl.description || '');
+    setLevelFormMode('edit');
+    setIsLevelFormOpen(true);
+    setIsTeacherFormOpen(false);
+  };
+
+  const handleInlineSaveLevel = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inlineLevelName.trim() || !inlineLevelAgeRange.trim()) {
+      showToast('Level name and Age range are required', 'warning');
+      return;
+    }
+    const ageRangeStr = inlineLevelAgeRange.trim() ? ` (${inlineLevelAgeRange.trim()})` : '';
+    const displayName = `${inlineLevelName.trim()}${ageRangeStr}`;
+
+    const levelData = {
+      name: inlineLevelName.trim(),
+      ageRange: inlineLevelAgeRange.trim(),
+      displayName,
+      khmerName: inlineLevelKhmer.trim() || undefined,
+      description: inlineLevelDesc.trim() || undefined,
+    };
+
+    if (levelFormMode === 'edit') {
+      const currentLvl = levels.find(l => l.displayName === ageGroup);
+      if (currentLvl) {
+        updateLevel(currentLvl.id, levelData);
+        setAgeGroup(displayName);
+        showToast(`Level updated to "${displayName}"`, 'success');
+      }
+    } else {
+      const newLvl = addLevel(levelData);
+      setAgeGroup(newLvl.displayName);
+    }
+    setIsLevelFormOpen(false);
+  };
+
+  const handleInlineAddTeacher = () => {
+    setInlineTeacherName('');
+    setInlineTeacherKhmer('');
+    setInlineTeacherEmail('');
+    setInlineTeacherTitle('Early Childhood Lead Educator');
+    setInlineTeacherPhone('');
+    setTeacherFormMode('add');
+    setIsTeacherFormOpen(true);
+    setIsLevelFormOpen(false); // Close level form to save space
+  };
+
+  const handleInlineEditTeacher = () => {
+    const activeTeacher = teachers.find(t => t.id === leadTeacherId);
+    if (!activeTeacher) {
+      showToast('Please select a teacher to edit', 'warning');
+      return;
+    }
+    setInlineTeacherName(activeTeacher.name);
+    setInlineTeacherKhmer(activeTeacher.khmerName || '');
+    setInlineTeacherEmail(activeTeacher.email || '');
+    setInlineTeacherTitle(activeTeacher.title || 'Early Childhood Lead Educator');
+    setInlineTeacherPhone(activeTeacher.phone || '');
+    setTeacherFormMode('edit');
+    setIsTeacherFormOpen(true);
+    setIsLevelFormOpen(false);
+  };
+
+  const handleInlineSaveTeacher = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inlineTeacherName.trim()) {
+      showToast('Educator name is required', 'warning');
+      return;
+    }
+
+    if (teacherFormMode === 'edit') {
+      if (leadTeacherId) {
+        updateAccount(leadTeacherId, {
+          name: inlineTeacherName.trim(),
+          khmerName: inlineTeacherKhmer.trim() || undefined,
+          title: inlineTeacherTitle.trim() || undefined,
+          phone: inlineTeacherPhone.trim() || undefined,
+        });
+        showToast('Educator record updated successfully', 'success');
+      }
+    } else {
+      const mail = inlineTeacherEmail.trim() || `educator.${Date.now()}@deweychildcare.edu.kh`;
+      const registered = await signUp({
+        name: inlineTeacherName.trim(),
+        khmerName: inlineTeacherKhmer.trim() || 'គ្រូបង្រៀន',
+        email: mail,
+        role: 'teacher',
+        title: inlineTeacherTitle.trim() || 'Early Childhood Lead Educator',
+        phone: inlineTeacherPhone.trim() || '+855 (0) 12 345 000',
+        status: 'active'
+      });
+      if (registered) {
+        setLeadTeacherId(registered.id);
+        showToast(`Registered and assigned new lead educator: ${registered.name}`, 'success');
+      }
+    }
+    setIsTeacherFormOpen(false);
+  };
 
   const handleApplyPreset = (preset: typeof NAME_PRESETS[0]) => {
     setName(preset.name);
@@ -114,6 +272,7 @@ export const ClassroomModal: React.FC<ClassroomModalProps> = ({ classroomToEdit,
         name: name.trim(),
         khmerName: khmerName.trim(),
         code: code.trim().toUpperCase(),
+        campusId,
         ageGroup,
         leadTeacherId,
         leadTeacherName,
@@ -130,6 +289,7 @@ export const ClassroomModal: React.FC<ClassroomModalProps> = ({ classroomToEdit,
         name: name.trim(),
         khmerName: khmerName.trim() || name.trim(),
         code: code.trim().toUpperCase(),
+        campusId,
         ageGroup,
         leadTeacherId,
         leadTeacherName,
@@ -252,9 +412,27 @@ export const ClassroomModal: React.FC<ClassroomModalProps> = ({ classroomToEdit,
           {/* 1. CLASSROOM NAME & IDENTIFIERS */}
           <div className="space-y-3">
             <label className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center justify-between">
-              <span>1. Classroom Identity & Age Level</span>
+              <span>1. Campus Assignment & Identity</span>
               <span className="text-[11px] text-emerald-700 font-semibold lowercase">Required</span>
             </label>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Assigned School Campus Tab *</span>
+              </label>
+              <select
+                value={campusId}
+                onChange={(e) => setCampusId(e.target.value as CampusId)}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-emerald-600 focus:ring-2 focus:ring-emerald-500/20"
+              >
+                {CAMPUS_LIST.filter(c => c.id !== 'ALL').map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.shortName} — {c.nameEnglish} ({c.location})
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
@@ -283,20 +461,40 @@ export const ClassroomModal: React.FC<ClassroomModalProps> = ({ classroomToEdit,
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600">Age Group & Stage *</label>
+                <div className="flex items-center justify-between mb-0.5">
+                  <label className="text-[11px] font-bold text-slate-600">Age Group & Stage *</label>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={handleInlineAddLevel}
+                      className="text-[10px] font-extrabold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded-lg border border-emerald-200/50 transition-colors"
+                    >
+                      + Add Level
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleInlineEditLevel}
+                      className="text-[10px] font-extrabold text-amber-700 bg-amber-50 hover:bg-amber-100 px-1.5 py-0.5 rounded-lg border border-amber-200/50 transition-colors"
+                    >
+                      ✎ Edit Selected
+                    </button>
+                  </div>
+                </div>
                 <select
                   value={ageGroup}
                   onChange={(e) => setAgeGroup(e.target.value as EarlyChildhoodAgeGroup)}
                   className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-emerald-600"
                 >
-                  {AGE_GROUPS.map((ag) => (
-                    <option key={ag} value={ag}>{ag}</option>
+                  {levels.map((lvl) => (
+                    <option key={lvl.id} value={lvl.displayName}>
+                      {lvl.displayName} {lvl.khmerName ? `(${lvl.khmerName})` : ''}
+                    </option>
                   ))}
                 </select>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600">Classroom Code *</label>
+                <label className="text-[11px] font-bold text-slate-600 block mb-0.5">Classroom Code *</label>
                 <div className="relative">
                   <Hash className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
@@ -310,10 +508,87 @@ export const ClassroomModal: React.FC<ClassroomModalProps> = ({ classroomToEdit,
                 </div>
               </div>
             </div>
+
+            {/* Inline Level Creator/Editor Sub-form */}
+            {isLevelFormOpen && (
+              <div className="p-4 bg-amber-50/40 border border-amber-200/60 rounded-2xl space-y-3.5 animate-in slide-in-from-top-2 duration-200">
+                <div className="flex items-center justify-between border-b border-amber-200/40 pb-2">
+                  <p className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                    <Layers className="w-4 h-4 text-[#D97706]" />
+                    <span>{levelFormMode === 'edit' ? `Customize Level: ${ageGroup}` : 'Create Custom Learning Level'}</span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsLevelFormOpen(false)}
+                    className="text-xs text-amber-700 hover:text-amber-950 font-bold"
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-600 block">Level Name (English) *</label>
+                    <input
+                      type="text"
+                      value={inlineLevelName}
+                      onChange={(e) => setInlineLevelName(e.target.value)}
+                      placeholder="e.g. Toddlers, Nursery"
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-emerald-600"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-600 block">Age Range *</label>
+                    <input
+                      type="text"
+                      value={inlineLevelAgeRange}
+                      onChange={(e) => setInlineLevelAgeRange(e.target.value)}
+                      placeholder="e.g. 1.5 - 2.5 yrs"
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-emerald-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-600 block">Khmer Title</label>
+                    <input
+                      type="text"
+                      value={inlineLevelKhmer}
+                      onChange={(e) => setInlineLevelKhmer(e.target.value)}
+                      placeholder="e.g. ថ្នាក់កូនក្មេង"
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 font-['Battambang'] focus:outline-emerald-600"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-600 block">Milestones Description</label>
+                    <input
+                      type="text"
+                      value={inlineLevelDesc}
+                      onChange={(e) => setInlineLevelDesc(e.target.value)}
+                      placeholder="e.g. Early vocabulary, sensory milestone focus"
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:outline-emerald-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleInlineSaveLevel}
+                    className="px-3.5 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white text-[11px] font-extrabold rounded-lg shadow-2xs"
+                  >
+                    {levelFormMode === 'edit' ? 'Save Milestones' : 'Create & Apply Level'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 2. FACULTY & TEACHER ASSIGNMENT */}
-          <div className="space-y-3">
+          <div className="space-y-3 border-t border-slate-100 pt-3">
             <label className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center justify-between">
               <span>2. Assigned Faculty & Educators</span>
               <span className="text-[11px] text-slate-500">Classroom Personnel</span>
@@ -321,10 +596,30 @@ export const ClassroomModal: React.FC<ClassroomModalProps> = ({ classroomToEdit,
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
-                  <GraduationCap className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>Lead Educator</span>
-                </label>
+                <div className="flex items-center justify-between mb-0.5">
+                  <label className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                    <GraduationCap className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Lead Educator</span>
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={handleInlineAddTeacher}
+                      className="text-[10px] font-extrabold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded-lg border border-emerald-200/50 transition-colors"
+                    >
+                      + Add Educator
+                    </button>
+                    {leadTeacherId && (
+                      <button
+                        type="button"
+                        onClick={handleInlineEditTeacher}
+                        className="text-[10px] font-extrabold text-amber-700 bg-amber-50 hover:bg-amber-100 px-1.5 py-0.5 rounded-lg border border-amber-200/50 transition-colors"
+                      >
+                        ✎ Edit Record
+                      </button>
+                    )}
+                  </div>
+                </div>
                 <select
                   value={leadTeacherId}
                   onChange={(e) => setLeadTeacherId(e.target.value)}
@@ -342,7 +637,7 @@ export const ClassroomModal: React.FC<ClassroomModalProps> = ({ classroomToEdit,
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600">Assistant / Co-Teacher Name</label>
+                <label className="text-[11px] font-bold text-slate-600 block mb-0.5">Assistant / Co-Teacher Name</label>
                 <input
                   type="text"
                   value={assistantTeacherName}
@@ -352,6 +647,95 @@ export const ClassroomModal: React.FC<ClassroomModalProps> = ({ classroomToEdit,
                 />
               </div>
             </div>
+
+            {/* Inline Teacher Creator/Editor Sub-form */}
+            {isTeacherFormOpen && (
+              <div className="p-4 bg-emerald-50/30 border border-emerald-200/40 rounded-2xl space-y-3.5 animate-in slide-in-from-top-2 duration-200">
+                <div className="flex items-center justify-between border-b border-emerald-200/30 pb-2">
+                  <p className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                    <GraduationCap className="w-4 h-4 text-emerald-800" />
+                    <span>{teacherFormMode === 'edit' ? 'Edit Lead Educator Record' : 'Register New Lead Educator'}</span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsTeacherFormOpen(false)}
+                    className="text-xs text-emerald-800 hover:text-emerald-950 font-bold"
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-600 block">Full Name (English) *</label>
+                    <input
+                      type="text"
+                      value={inlineTeacherName}
+                      onChange={(e) => setInlineTeacherName(e.target.value)}
+                      placeholder="e.g. Mrs. Sophy Chhim"
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-emerald-600"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-600 block">Khmer Name (ភាសាខ្មែរ)</label>
+                    <input
+                      type="text"
+                      value={inlineTeacherKhmer}
+                      onChange={(e) => setInlineTeacherKhmer(e.target.value)}
+                      placeholder="e.g. ឆឹម សុភី"
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 font-['Battambang'] focus:outline-emerald-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-600 block">Professional Title *</label>
+                    <input
+                      type="text"
+                      value={inlineTeacherTitle}
+                      onChange={(e) => setInlineTeacherTitle(e.target.value)}
+                      placeholder="e.g. Early Childhood Lead Educator"
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-emerald-600"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-600 block">Contact Phone</label>
+                    <input
+                      type="text"
+                      value={inlineTeacherPhone}
+                      onChange={(e) => setInlineTeacherPhone(e.target.value)}
+                      placeholder="e.g. +855 12 345 678"
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:outline-emerald-600"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-600 block">Email Address {teacherFormMode === 'add' ? '*' : '(Read-only)'}</label>
+                    <input
+                      type="email"
+                      disabled={teacherFormMode === 'edit'}
+                      value={inlineTeacherEmail}
+                      onChange={(e) => setInlineTeacherEmail(e.target.value)}
+                      placeholder="e.g. sophy.chhim@deweychildcare.edu.kh"
+                      className="w-full px-2.5 py-1.5 bg-white disabled:bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:outline-emerald-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleInlineSaveTeacher}
+                    className="px-3.5 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white text-[11px] font-extrabold rounded-lg shadow-2xs"
+                  >
+                    {teacherFormMode === 'edit' ? 'Update Educator Record' : 'Register & Assign Educator'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 3. PHYSICAL SPACE & STUDENT CAPACITY */}

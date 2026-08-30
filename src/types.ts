@@ -1,11 +1,15 @@
 export type UserRole = 'admin' | 'academic_officer' | 'teacher';
 
-export type EarlyChildhoodAgeGroup = 
-  | 'Toddlers (1.5 - 2.5 yrs)'
-  | 'Nursery (2.5 - 3.5 yrs)'
-  | 'Pre-Kindergarten (3.5 - 4.5 yrs)'
-  | 'Kindergarten 1 (4.5 - 5.5 yrs)'
-  | 'Kindergarten 2 (5.5 - 6.5 yrs)';
+export type EarlyChildhoodAgeGroup = string;
+
+export interface SchoolLevel {
+  id: string;
+  name: string;
+  ageRange: string;
+  displayName: string;
+  khmerName?: string;
+  description?: string;
+}
 
 export type EarlyChildhoodDomain = 
   | 'Language & Early Literacy'
@@ -24,6 +28,110 @@ export type LessonPlanStatus =
   | 'approved'
   | 'revision_requested';
 
+export type CampusId = 
+  | 'ALL'
+  | 'DCH_SYW'
+  | 'DCH_SESSOR'
+  | 'DCH_BMC'
+  | 'DK_ROMCHEK_4'
+  | 'DK_BOREY_ROMCHEK'
+  | 'DK_OCHAR'
+  | 'DK_BMC';
+
+export interface CampusInfo {
+  id: CampusId;
+  code: string;
+  nameEnglish: string;
+  nameKhmer: string;
+  shortName: string;
+  brand: 'DCH' | 'DK' | 'CENTRAL';
+  location: string;
+  colorTheme: string;
+}
+
+export const CAMPUS_LIST: CampusInfo[] = [
+  {
+    id: 'ALL',
+    code: 'CENTRAL',
+    nameEnglish: 'DEWEY EARLY CHILDHOOD EDUCATION CENTRAL OFFICE',
+    nameKhmer: 'ការិយាល័យកណ្តាលអប់រំកុមារតូច ឌូអី',
+    shortName: 'Central HQ',
+    brand: 'CENTRAL',
+    location: 'Central Headquarters',
+    colorTheme: 'emerald'
+  },
+  {
+    id: 'DCH_SYW',
+    code: 'DCH SYW',
+    nameEnglish: 'Dewey Childcare House - Soun Yuwan',
+    nameKhmer: 'ឌូវី ឆាល់ឃែរ៍ ហោស៍ (សាខាសួនយុវ័ន)',
+    shortName: 'DCH SYW',
+    brand: 'DCH',
+    location: 'Soun Yuwan Campus',
+    colorTheme: 'emerald'
+  },
+  {
+    id: 'DCH_SESSOR',
+    code: 'DCH SESSOR',
+    nameEnglish: 'Dewey Childcare House - Sessor',
+    nameKhmer: 'ឌូវី ឆាល់ឃែរ៍ ហោស៍ (សាខាសិស្ស)',
+    shortName: 'DCH SESSOR',
+    brand: 'DCH',
+    location: 'Sessor Campus',
+    colorTheme: 'amber'
+  },
+  {
+    id: 'DCH_BMC',
+    code: 'DCH BMC',
+    nameEnglish: 'Dewey Childcare House - BMC',
+    nameKhmer: 'ឌូវី ឆាល់ឃែរ៍ ហោស៍ (សាខាបន្ទាយមានជ័យ)',
+    shortName: 'DCH BMC',
+    brand: 'DCH',
+    location: 'Banteay Meanchey Campus',
+    colorTheme: 'blue'
+  },
+  {
+    id: 'DK_ROMCHEK_4',
+    code: 'DK ROMCHEK 4',
+    nameEnglish: 'Dewey Kindergarten - Romchek 4',
+    nameKhmer: 'សាលាមត្តេយ្យ ឌូអី (សាខារំចេក ៤)',
+    shortName: 'DK ROMCHEK 4',
+    brand: 'DK',
+    location: 'Romchek 4 Campus',
+    colorTheme: 'purple'
+  },
+  {
+    id: 'DK_BOREY_ROMCHEK',
+    code: 'DK BOREY ROMCHEK',
+    nameEnglish: 'Dewey Kindergarten - Borey Romchek',
+    nameKhmer: 'សាលាមត្តេយ្យ ឌូអី (សាខាបុរីរំចេក)',
+    shortName: 'DK BOREY ROMCHEK',
+    brand: 'DK',
+    location: 'Borey Romchek Campus',
+    colorTheme: 'teal'
+  },
+  {
+    id: 'DK_OCHAR',
+    code: 'DK OCHAR',
+    nameEnglish: 'Dewey Kindergarten - Ochar',
+    nameKhmer: 'សាលាមត្តេយ្យ ឌូអី (សាខាអូរចារ)',
+    shortName: 'DK OCHAR',
+    brand: 'DK',
+    location: 'Ochar Campus',
+    colorTheme: 'rose'
+  },
+  {
+    id: 'DK_BMC',
+    code: 'DK BMC',
+    nameEnglish: 'Dewey Kindergarten - BMC',
+    nameKhmer: 'សាលាមត្តេយ្យ ឌូអី (សាខាបន្ទាយមានជ័យ)',
+    shortName: 'DK BMC',
+    brand: 'DK',
+    location: 'BMC Campus',
+    colorTheme: 'indigo'
+  }
+];
+
 export interface UserAccount {
   id: string;
   firebaseUid?: string;
@@ -34,6 +142,8 @@ export interface UserAccount {
   avatar: string;
   role: UserRole;
   title: string;
+  campusId?: CampusId;
+  campusName?: string;
   assignedClassId?: string;
   assignedClassName?: string;
   ageGroup?: EarlyChildhoodAgeGroup;
@@ -79,6 +189,7 @@ export interface Classroom {
   name: string;
   khmerName: string;
   code: string;
+  campusId?: CampusId;
   ageGroup: EarlyChildhoodAgeGroup;
   leadTeacherId: string;
   leadTeacherName: string;
@@ -149,6 +260,7 @@ export interface LessonPlan {
   teacherName: string;
   teacherAvatar: string;
   teacherEmail: string;
+  campusId?: CampusId;
   classId: string;
   className: string;
   ageGroup: EarlyChildhoodAgeGroup;

@@ -8,12 +8,10 @@ import { LessonPlanEditor } from './components/LessonPlanEditor';
 import { LessonPlanDetailModal } from './components/LessonPlanDetailModal';
 import { ClassroomDirectory } from './components/ClassroomDirectory';
 import { WeeklyScheduleCalendar } from './components/WeeklyScheduleCalendar';
-import { BrandGuidelinesModal } from './components/BrandGuidelinesModal';
 import { NewTeacherModal } from './components/NewTeacherModal';
 import { AuthModal } from './components/AuthModal';
 import { AuthGate } from './components/AuthGate';
 import { SchoolProfileModal } from './components/SchoolProfileModal';
-import { LessonPlanTemplateModal } from './components/LessonPlanTemplateModal';
 import { LessonPlan } from './types';
 import { 
   LayoutDashboard, 
@@ -46,9 +44,7 @@ const MainContent: React.FC = () => {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<LessonPlan | null>(null);
   const [viewingPlan, setViewingPlan] = useState<LessonPlan | null>(null);
-  const [isBrandGuideOpen, setIsBrandGuideOpen] = useState(false);
   const [isNewTeacherOpen, setIsNewTeacherOpen] = useState(false);
-  const [isFormatTemplateOpen, setIsFormatTemplateOpen] = useState(false);
 
   // Toast Component Helper
   const renderToast = () => {
@@ -112,9 +108,7 @@ const MainContent: React.FC = () => {
       {/* Header */}
       <Header
         onOpenNewPlan={handleOpenNewPlan}
-        onOpenBrandGuide={() => setIsBrandGuideOpen(true)}
         onOpenNewTeacher={() => setIsNewTeacherOpen(true)}
-        onOpenFormatTemplate={() => setIsFormatTemplateOpen(true)}
       />
 
       {/* Role Notice & Sub-Navigation Bar */}
@@ -288,13 +282,6 @@ const MainContent: React.FC = () => {
           </p>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setIsBrandGuideOpen(true)}
-              className="text-emerald-800 font-bold hover:underline"
-            >
-              Brand Guidelines & Palette
-            </button>
-            <span>·</span>
-            <button
               onClick={signOut}
               className="text-rose-600 font-bold hover:underline"
             >
@@ -327,22 +314,8 @@ const MainContent: React.FC = () => {
         />
       )}
 
-      {isBrandGuideOpen && (
-        <BrandGuidelinesModal onClose={() => setIsBrandGuideOpen(false)} />
-      )}
-
       {isNewTeacherOpen && (
         <NewTeacherModal onClose={() => setIsNewTeacherOpen(false)} />
-      )}
-
-      {isFormatTemplateOpen && (
-        <LessonPlanTemplateModal
-          onClose={() => setIsFormatTemplateOpen(false)}
-          onUseTemplate={() => {
-            setIsFormatTemplateOpen(false);
-            handleOpenNewPlan();
-          }}
-        />
       )}
 
       <SchoolProfileModal />

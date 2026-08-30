@@ -26,7 +26,7 @@ const useAppSafe = () => {
   }
 };
 
-export const DCHShield: React.FC<{ size?: number; className?: string }> = ({ size = 48, className = '' }) => {
+export const DIShield: React.FC<{ size?: number; className?: string }> = ({ size = 48, className = '' }) => {
   return (
     <svg
       width={size}
@@ -35,26 +35,26 @@ export const DCHShield: React.FC<{ size?: number; className?: string }> = ({ siz
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={`shrink-0 drop-shadow-sm select-none ${className}`}
-      aria-label="Dewey Childcare House (DCH) Official Logo"
+      aria-label="Dewey International (DI) Official Logo"
     >
       <defs>
-        {/* Inner Shield Clip Path for Clean Half-Split */}
-        <clipPath id="dchShieldInnerClip">
+        {/* Inner Shield Clip Path */}
+        <clipPath id="diShieldInnerClip">
           <path d="M 500,86 C 685,86 896,132 896,132 C 896,445 870,720 500,1050 C 130,720 104,445 104,132 C 104,132 315,86 500,86 Z" />
         </clipPath>
-        {/* Right Half Clip for Book Sweep */}
-        <clipPath id="dchRightClip">
+        {/* Right Half Clip */}
+        <clipPath id="diRightClip">
           <rect x="500" y="0" width="500" height="1140" />
         </clipPath>
       </defs>
 
-      {/* 1. Outer Shield (Green Base) */}
+      {/* 1. Outer Shield (Emerald Green Base) */}
       <path
         d="M 500,60 C 705,60 940,110 940,110 C 940,460 912,750 500,1080 C 88,750 60,460 60,110 C 60,110 295,60 500,60 Z"
         fill="#008242"
       />
 
-      {/* 2. Orange / Gold Accent Border Line */}
+      {/* 2. Gold Accent Border Line */}
       <path
         d="M 500,86 C 685,86 896,132 896,132 C 896,445 870,720 500,1050 C 130,720 104,445 104,132 C 104,132 315,86 500,86 Z"
         fill="none"
@@ -64,97 +64,51 @@ export const DCHShield: React.FC<{ size?: number; className?: string }> = ({ siz
         strokeLinecap="round"
       />
 
-      {/* 3. Inner Shield Content Area (Masked) */}
-      <g clipPath="url(#dchShieldInnerClip)">
+      {/* 3. Inner Shield Content Area */}
+      <g clipPath="url(#diShieldInnerClip)">
         {/* Left Side: Solid Emerald Green */}
         <rect x="0" y="0" width="500" height="1140" fill="#008242" />
 
         {/* Right Side: Clean White Canvas */}
         <rect x="500" y="0" width="500" height="1140" fill="#FFFFFF" />
 
-        {/* Vertical Split Guideline */}
+        {/* Vertical Split Line */}
         <line x1="500" y1="86" x2="500" y2="1050" stroke="#008242" strokeWidth="2" />
 
-        {/* ========================================== */}
-        {/* LEFT HALF: D C H Vertical Serif Monogram   */}
-        {/* ========================================== */}
-        <g fill="#FFFFFF" fontFamily="'Times New Roman', 'Baskerville', 'Georgia', 'Times', serif" fontWeight="bold" textAnchor="middle">
-          {/* Letter D */}
-          <text x="290" y="348" fontSize="240" letterSpacing="2">D</text>
-          {/* Letter C */}
-          <text x="290" y="582" fontSize="240" letterSpacing="2">C</text>
-          {/* Letter H */}
-          <text x="290" y="816" fontSize="240" letterSpacing="2">H</text>
+        {/* LEFT HALF: D I Monogram */}
+        <g fill="#FFFFFF" fontFamily="'Times New Roman', 'Baskerville', 'Georgia', serif" fontWeight="bold" textAnchor="middle">
+          <text x="290" y="440" fontSize="280" letterSpacing="4">D</text>
+          <text x="290" y="740" fontSize="280" letterSpacing="4">I</text>
         </g>
 
-        {/* ========================================== */}
-        {/* RIGHT HALF: Academic Cap & Open Book       */}
-        {/* ========================================== */}
-        <g clipPath="url(#dchRightClip)">
-          {/* 1. GRADUATION MORTARBOARD (Cap) */}
+        {/* RIGHT HALF: Academic Cap & Open Book */}
+        <g clipPath="url(#diRightClip)">
+          {/* Graduation Cap */}
           <polygon points="700,268 852,308 700,348 548,308" fill="#008242" />
-          
-          {/* Cap Underside Skull-Cap */}
           <path d="M 588,335 C 588,335 588,390 700,412 C 812,390 812,335 812,335 C 812,335 776,374 700,374 C 624,374 588,335 588,335 Z" fill="#008242" />
-          
-          {/* Cap Tassel Hanging on Left Side */}
           <path d="M 558,308 L 558,405" stroke="#008242" strokeWidth="6" strokeLinecap="round" />
           <circle cx="558" cy="412" r="7.5" fill="#008242" />
-          
-          {/* Center Mortarboard Button */}
           <ellipse cx="700" cy="308" rx="7" ry="5" fill="#FFFFFF" />
           <ellipse cx="700" cy="308" rx="4" ry="3" fill="#008242" />
 
-          {/* 2. OPEN BOOK: Golden/Orange Top Wings */}
-          {/* Left Wing Upper & Lower */}
-          <path
-            d="M 698,532 C 672,475 588,446 515,482 C 555,496 630,504 682,530 Z"
-            fill="#F58220"
-          />
-          <path
-            d="M 554,435 C 598,435 660,462 696,520 C 660,488 596,468 540,460 Z"
-            fill="#F58220"
-          />
+          {/* Open Book Wings */}
+          <path d="M 698,532 C 672,475 588,446 515,482 C 555,496 630,504 682,530 Z" fill="#F58220" />
+          <path d="M 554,435 C 598,435 660,462 696,520 C 660,488 596,468 540,460 Z" fill="#F58220" />
+          <path d="M 702,532 C 728,475 812,446 885,482 C 845,496 770,504 718,530 Z" fill="#F58220" />
+          <path d="M 846,435 C 802,435 740,462 704,520 C 740,488 804,468 860,460 Z" fill="#F58220" />
 
-          {/* Right Wing Upper & Lower */}
-          <path
-            d="M 702,532 C 728,475 812,446 885,482 C 845,496 770,504 718,530 Z"
-            fill="#F58220"
-          />
-          <path
-            d="M 846,435 C 802,435 740,462 704,520 C 740,488 804,468 860,460 Z"
-            fill="#F58220"
-          />
-
-          {/* 3. OPEN BOOK: Stylized Green Curved Lower Pages & Sweeps */}
-          {/* Top Green Margin Rule */}
-          <path
-            d="M 500,580 C 650,555 810,578 905,618 L 905,638 C 810,598 650,575 500,600 Z"
-            fill="#008242"
-          />
-
-          {/* Upper Swoosh Band */}
-          <path
-            d="M 500,685 C 620,630 755,640 885,700 C 850,718 730,662 500,715 Z"
-            fill="#008242"
-          />
-
-          {/* Middle Swoosh Band */}
-          <path
-            d="M 500,740 C 610,695 725,705 845,775 C 805,792 700,730 500,772 Z"
-            fill="#008242"
-          />
-
-          {/* Lower Swoosh Band */}
-          <path
-            d="M 500,798 C 590,758 680,770 785,848 C 730,868 645,808 500,832 Z"
-            fill="#008242"
-          />
+          {/* Open Book Curved Pages */}
+          <path d="M 500,580 C 650,555 810,578 905,618 L 905,638 C 810,598 650,575 500,600 Z" fill="#008242" />
+          <path d="M 500,685 C 620,630 755,640 885,700 C 850,718 730,662 500,715 Z" fill="#008242" />
+          <path d="M 500,740 C 610,695 725,705 845,775 C 805,792 700,730 500,772 Z" fill="#008242" />
+          <path d="M 500,798 C 590,758 680,770 785,848 C 730,868 645,808 500,832 Z" fill="#008242" />
         </g>
       </g>
     </svg>
   );
 };
+
+export const DCHShield = DIShield;
 
 export const SchoolLogoIcon: React.FC<{
   size?: number;
@@ -167,7 +121,13 @@ export const SchoolLogoIcon: React.FC<{
     ? null 
     : (customLogoUrl !== undefined ? customLogoUrl : schoolProfile?.customLogoUrl);
 
-  if (effectiveLogoUrl) {
+  const [hasError, setHasError] = React.useState(false);
+
+  React.useEffect(() => {
+    setHasError(false);
+  }, [effectiveLogoUrl]);
+
+  if (effectiveLogoUrl && !hasError) {
     return (
       <div 
         style={{ width: size, height: Math.round(size * 1.14) }} 
@@ -178,9 +138,8 @@ export const SchoolLogoIcon: React.FC<{
           alt={schoolProfile?.schoolNameEnglish || "School Logo"}
           className="w-full h-full object-contain"
           referrerPolicy="no-referrer"
-          onError={(e) => {
-            // fallback if custom logo image link fails
-            e.currentTarget.style.display = 'none';
+          onError={() => {
+            setHasError(true);
           }}
         />
       </div>
